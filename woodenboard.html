@@ -12,7 +12,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/chessground/assets/chessground.css">
 <link rel="stylesheet" href="https://unpkg.com/chessground/assets/theme/cburnett.css">
-<script src="https://unpkg.com/chessground"></script>
 
 <style>
 /* ============================================================
@@ -34,7 +33,7 @@
   --serif:Georgia,'Iowan Old Style','Palatino Linotype',serif;
   --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   
-  /* Dynamic Chessground square properties */
+  /* Dynamic procedural Chessground board square targets */
   --board-light: #f0d9b5;
   --board-dark: #b58863;
 }
@@ -102,16 +101,21 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 .board-col{flex:1;min-width:0;}
 .board-shell{max-width:560px;margin:0 auto;position:relative;}
 
-/* Updated for Chessground Tiling Integration */
+/* Chessground container rendering optimizations */
 #board {
-  width:100%;
+  width: 100%;
   aspect-ratio: 1 / 1;
-  border-radius:10px;
-  overflow:hidden;
-  box-shadow:0 18px 50px rgba(0,0,0,0.5);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.5);
+  position: relative;
 }
-#board square.white { background-color: var(--board-light); }
-#board square.black { background-color: var(--board-dark); }
+
+/* Procedural engine grid generation (removes background dependencies) */
+#board cg-board {
+  background-image: repeating-conic-gradient(var(--board-light) 0% 25%, var(--board-dark) 0% 50%);
+  background-size: 25% 25%;
+}
 
 .board-toolbar{display:flex;justify-content:space-between;align-items:center;padding:6px 2px 10px;max-width:560px;margin:0 auto;}
 .icon-btn{background:var(--panel);border:1px solid var(--panel-border);color:var(--text);width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;}
@@ -140,13 +144,13 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 .spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--panel-border);border-top-color:var(--gold);animation:spin 0.8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
-/* board square highlight animations */
-.sq-correct{box-shadow:inset 0 0 0 9999px rgba(95,191,110,0.45)!important;}
-.sq-wrong{animation:shake 0.4s;}
+/* Unified mobile-first tactile feedback animation context */
+.shake-anim { animation: shake 0.4s; }
 @keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}}
-.sq-hint{box-shadow:inset 0 0 0 9999px rgba(212,175,55,0.5)!important;}
 
-/* ===================== STATS ===================== */
+/* .sq-hint custom highlighting layer directly leveraging Chessground styles */
+#board g.shapes { opacity: 0.75; }
+
 .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:14px 16px;max-width:760px;margin:0 auto;}
 @media (min-width:640px){.stats-grid{grid-template-columns:repeat(4,1fr);}}
 .stat-card{padding:16px;text-align:center;}
@@ -159,7 +163,6 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 .bar-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-soft));}
 .piece-stat-row .pct{font-size:12px;color:var(--text-dim);width:42px;text-align:right;}
 
-/* ===================== SETTINGS / ABOUT ===================== */
 .simple-screen{max-width:600px;margin:0 auto;padding:16px;}
 .settings-row{display:flex;justify-content:space-between;align-items:center;padding:16px;margin-bottom:10px;}
 .settings-row .lbl{font-size:14px;}
@@ -339,7 +342,9 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 
 <div class="toast" id="toast"></div>
 
-<script>
+<script type="module">
+import { Chessground } from 'https://cdn.jsdelivr.net/npm/chessground/+esm';
+
 'use strict';
 
 /* ============================================================
@@ -560,7 +565,7 @@ document.getElementById('chipRecent').addEventListener('click', ()=>{
 });
 
 /* ============================================================
-   TRAINER — Chessground + Chess.js Wiring
+   TRAINER — Chessground Rules Synchronization
    ============================================================ */
 function initBoardIfNeeded(){
   if(state.board) return;
@@ -656,7 +661,8 @@ function loadPuzzle(pieceKey, puzzle){
     fen: puzzle.fen,
     orientation: state.boardOrientation,
     turnColor: state.chess.turn() === 'w' ? 'white' : 'black',
-    movable: { color: 'none', dests: new Map() }
+    movable: { color: 'none', dests: new Map() },
+    drawable: { shapes: [] } // Clear previous markers safely
   });
 
   renderPuzzleInfo(pieceKey, puzzle);
@@ -688,7 +694,7 @@ function applyMoveToBoard(uci){
   const mv = parseUCI(uci);
   const result = state.chess.move(mv);
   if(result) {
-    state.board.set({ fen: state.chess.fen() });
+    state.board.set({ fen: state.chess.fen(), lastMove: [mv.from, mv.to] });
   }
   sfx.move();
   return result;
@@ -700,26 +706,24 @@ function setStatus(msg, cls){
   el.className = 'status-bar' + (cls ? ' ' + cls : '');
 }
 
-/* ---- Chessground interaction sync ---- */
+/* ---- User Drag Actions Interaction Mapping ---- */
 function onChessgroundMove(from, to) {
   if (!state.solving || !state.currentPuzzle) return;
   
   const expected = parseUCI(state.currentPuzzle.moves[state.moveCursor]);
 
-  // Is this the accurate database continuation move?
+  // Handle wrong move execution branch
   if (from !== expected.from || to !== expected.to) {
     registerAttempt(false);
-    flashSquare(to, 'sq-wrong');
+    triggerWrongMoveFeedback();
     sfx.wrong();
     setStatus('Not quite — try again.', 'wrong');
-    // Revert Chessground structure back to engine state
     syncBoardState();
     return;
   }
 
-  // Valid tactical target matching the solution tree
+  // Handle valid move branch
   state.chess.move({ from: from, to: to, promotion: expected.promotion });
-  flashSquare(to, 'sq-correct');
   sfx.correct();
   registerAttempt(true);
   state.moveCursor++;
@@ -747,12 +751,11 @@ function playNextAutoMove(){
   }
 }
 
-function flashSquare(square, cls){
-  if(!state.settings.animations) return;
-  const sq = document.querySelector(`#board square.${square}`);
-  if(!sq) return;
-  sq.classList.add(cls);
-  setTimeout(()=>sq.classList.remove(cls), 500);
+function triggerWrongMoveFeedback() {
+  if (!state.settings.animations) return;
+  const boardEl = document.getElementById('board');
+  boardEl.classList.add('shake-anim');
+  setTimeout(() => boardEl.classList.remove('shake-anim'), 400);
 }
 
 function finishPuzzle(){
@@ -801,11 +804,17 @@ function addToRecents(piece, puzzle){
 /* ============================================================
    ACTION BUTTONS
    ============================================================ */
-document.getElementById('btnHint').addEventListener('click', ()=>{
-  if(!state.solving || !state.currentPuzzle) return toast('No active puzzle to hint.');
+document.getElementById('btnHint').addEventListener('click', () => {
+  if (!state.solving || !state.currentPuzzle) return toast('No active puzzle to hint.');
   const expected = parseUCI(state.currentPuzzle.moves[state.moveCursor]);
-  flashSquare(expected.from, 'sq-hint');
-  setStatus('Hint: look at the highlighted square.', 'info');
+  
+  // Natively render hint circles inside Chessground canvas layer
+  state.board.set({
+    drawable: {
+      shapes: [{ orig: expected.from, brush: 'green' }]
+    }
+  });
+  setStatus('Hint: look at the highlighted piece.', 'info');
 });
 
 document.getElementById('btnSolution').addEventListener('click', ()=>{
@@ -922,7 +931,7 @@ wireToggle('toggleAutoFlip', 'autoFlip');
 
 document.querySelectorAll('#boardColorRow .color-dot').forEach(dot=>{
   dot.addEventListener('click', ()=>{
-    state.settings[key = 'boardColor'] = dot.dataset.c;
+    state.settings['boardColor'] = dot.dataset.c;
     saveSettings();
     applyBoardColor();
   });
@@ -940,7 +949,7 @@ function applyBoardColor(){
 }
 
 /* ============================================================
-   INIT
+   INITIALIZATION
    ============================================================ */
 function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
 
@@ -949,7 +958,7 @@ async function init(){
   applyBoardColor();
   try{
     state.masterIndex = await fetchJSONCached(`${CONFIG.REPO_BASE}/index.json`);
-  }catch(e){ console.warn('Master index unavailable yet:', e); }
+  }catch(e){ console.warn('Master index offline:', e); }
 
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').catch(()=>{});
