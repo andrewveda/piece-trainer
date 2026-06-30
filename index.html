@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -89,6 +88,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 .quick-row{display:flex;gap:10px;padding:0 16px 20px;overflow-x:auto;}
 .chip{flex:0 0 auto;padding:10px 16px;border-radius:999px;font-size:13px;color:var(--text);cursor:pointer;white-space:nowrap;}
 .chip:active{transform:scale(0.96);}
+.chip.active{border-color:var(--gold);color:var(--gold-soft);}
 
 /* ===================== BOTTOM NAV ===================== */
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:50;display:flex;justify-content:space-around;padding:10px 8px calc(10px + env(safe-area-inset-bottom));background:rgba(11,14,20,0.85);backdrop-filter:blur(16px);border-top:1px solid var(--panel-border);}
@@ -105,6 +105,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 .board-toolbar{display:flex;justify-content:space-between;align-items:center;padding:6px 2px 10px;max-width:560px;margin:0 auto;}
 .icon-btn{background:var(--panel);border:1px solid var(--panel-border);color:var(--text);width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;}
 .icon-btn:active{transform:scale(0.92);}
+.icon-btn:disabled{opacity:0.35;cursor:default;}
 .status-bar{max-width:560px;margin:0 auto 6px;text-align:center;min-height:24px;font-size:14px;font-weight:600;letter-spacing:0.2px;}
 .status-bar.correct{color:var(--green);}
 .status-bar.wrong{color:var(--red);}
@@ -113,8 +114,11 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 .action-row{display:flex;flex-wrap:wrap;gap:8px;max-width:560px;margin:10px auto 0;justify-content:center;}
 .btn{font-family:var(--sans);font-size:13px;font-weight:600;padding:11px 16px;border-radius:12px;border:1px solid var(--panel-border);background:var(--panel);color:var(--text);cursor:pointer;min-height:42px;}
 .btn:active{transform:scale(0.96);}
+.btn:disabled{opacity:0.35;cursor:default;transform:none;}
 .btn.primary{background:linear-gradient(135deg,var(--gold-soft),var(--gold));color:#1a1404;border:none;}
 .btn.danger{border-color:rgba(225,86,78,0.4);color:var(--red);}
+
+.nav-row{display:flex;gap:8px;max-width:560px;margin:8px auto 0;justify-content:center;}
 
 .side-panel{width:100%;max-width:340px;margin:0 auto;}
 @media (min-width:880px){.side-panel{width:320px;flex:0 0 320px;}}
@@ -124,6 +128,14 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 .info-row:last-child{border-bottom:none;}
 .info-row .v{color:var(--gold-soft);font-weight:600;text-align:right;max-width:60%;}
 .theme-tag{display:inline-block;font-size:11px;padding:3px 9px;margin:3px 3px 0 0;border-radius:999px;background:rgba(212,175,55,0.12);color:var(--gold-soft);}
+
+.move-list{display:flex;flex-wrap:wrap;gap:4px 0;font-size:13px;max-height:120px;overflow-y:auto;line-height:1.9;}
+.move-list .mv{padding:2px 7px;border-radius:7px;cursor:pointer;color:var(--text-dim);}
+.move-list .mv:hover{background:rgba(255,255,255,0.06);}
+.move-list .mv.current{background:rgba(212,175,55,0.18);color:var(--gold-soft);font-weight:700;}
+.move-list .mnum{color:var(--text-dim);font-size:11px;padding-right:2px;}
+.mini-actions{display:flex;gap:8px;margin-top:10px;}
+.mini-actions .btn{flex:1;padding:8px 6px;font-size:12px;min-height:34px;}
 
 .loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:14px;color:var(--text-dim);}
 .spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--panel-border);border-top-color:var(--gold);animation:spin 0.8s linear infinite;}
@@ -193,6 +205,14 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 
   <div class="piece-grid" id="pieceGrid"><!-- piece cards injected by JS --></div>
 
+  <div class="section-label">Difficulty</div>
+  <div class="quick-row" id="difficultyRow">
+    <div class="chip glass active" data-min="0" data-max="9999">All</div>
+    <div class="chip glass" data-min="0" data-max="1200">Easy</div>
+    <div class="chip glass" data-min="1200" data-max="1800">Medium</div>
+    <div class="chip glass" data-min="1800" data-max="9999">Hard</div>
+  </div>
+
   <div class="section-label">Quick Start</div>
   <div class="quick-row">
     <div class="chip glass" id="chipRandom">🎲 Random Piece</div>
@@ -225,6 +245,13 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
         <div class="status-bar info" id="statusBar">Choose a piece to begin</div>
         <button class="icon-btn" id="btnFavorite" title="Favorite">☆</button>
       </div>
+      <div class="nav-row">
+        <button class="icon-btn" id="btnFirst" title="Jump to start">⏮</button>
+        <button class="icon-btn" id="btnPrev" title="Previous move">◀</button>
+        <button class="icon-btn" id="btnUndo" title="Undo my last move">↩</button>
+        <button class="icon-btn" id="btnNextMove" title="Next move">▶</button>
+        <button class="icon-btn" id="btnLast" title="Jump to latest">⏭</button>
+      </div>
       <div class="action-row">
         <button class="btn" id="btnHint">💡 Hint</button>
         <button class="btn" id="btnSolution">📖 Solution</button>
@@ -242,6 +269,8 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
         <div class="info-row"><span>Popularity</span><span class="v" id="infoPopularity">—</span></div>
         <div class="info-row"><span>Times Played</span><span class="v" id="infoPlays">—</span></div>
         <div class="info-row"><span>Puzzle ID</span><span class="v" id="infoId">—</span></div>
+        <div class="info-row"><span>Move</span><span class="v" id="infoMoveCount">—</span></div>
+        <div class="info-row"><span>Session Solved</span><span class="v" id="infoSession">0</span></div>
       </div>
       <div class="info-card glass">
         <h3>Themes</h3>
@@ -250,6 +279,14 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
       <div class="info-card glass">
         <h3>Opening</h3>
         <div id="infoOpening" style="font-size:13px;color:var(--text-dim);">—</div>
+      </div>
+      <div class="info-card glass">
+        <h3>Notation</h3>
+        <div class="move-list" id="moveList">—</div>
+        <div class="mini-actions">
+          <button class="btn" id="btnCopyFen">Copy FEN</button>
+          <button class="btn" id="btnCopyPgn">Copy PGN</button>
+        </div>
       </div>
     </div>
   </div>
@@ -305,6 +342,10 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
       <div class="switch" id="toggleAutoFlip"><div class="knob"></div></div>
     </div>
     <div class="settings-row glass">
+      <div><div class="lbl">Auto-Advance</div><div class="sub">Load next puzzle automatically once solved</div></div>
+      <div class="switch" id="toggleAutoAdvance"><div class="knob"></div></div>
+    </div>
+    <div class="settings-row glass">
       <div><div class="lbl">Piece Style</div></div>
       <select class="select-pill" id="selPieceStyle">
         <option value="wikipedia">Classic</option>
@@ -335,6 +376,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
       <p>A focused tactics trainer that lets you drill puzzles by the piece that delivers the winning move — pawns, knights, bishops, rooks, queens, and kings each have their own pattern language. Pick a piece, solve the first move, and watch the combination play out.</p>
       <p>Puzzles are streamed live from a Lichess-derived puzzle database, organized by piece and loaded one at a time to keep the app fast and light — nothing is ever preloaded in bulk.</p>
       <p>Built with vanilla HTML, CSS and JavaScript, plus chess.js and chessboard.js. No frameworks, no build step — runs entirely on GitHub Pages.</p>
+      <p style="margin-top:10px;">Keyboard shortcuts: <strong>←</strong> / <strong>→</strong> step through moves, <strong>H</strong> hint, <strong>N</strong> next puzzle.</p>
     </div>
   </div>
 </section>
@@ -358,10 +400,10 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
    CONFIGURATION
    ============================================================ */
 const CONFIG = {
-  // Raw GitHub content base for the puzzle database (andrewveda/piece-trainer, branch main, /output)
   REPO_BASE: 'https://raw.githubusercontent.com/andrewveda/piece-trainer/main/output',
-  CACHE_LIMIT: 24,        // max number of JSON files kept in memory cache
-  AUTO_MOVE_DELAY: 480,   // ms between auto-played moves in a solution line
+  CACHE_LIMIT: 24,
+  AUTO_MOVE_DELAY: 480,
+  AUTO_ADVANCE_DELAY: 1400,
 };
 
 const PIECES = [
@@ -377,17 +419,23 @@ const PIECES = [
    STATE
    ============================================================ */
 const state = {
-  cache: new Map(),          // url -> parsed JSON  (LRU-ish)
-  pieceIndexCache: new Map(),// piece -> file list
+  cache: new Map(),
+  pieceIndexCache: new Map(),
   masterIndex: null,
   currentPiece: null,
   currentPuzzle: null,
-  chess: null,
+  chess: null,            // chess.js instance reflecting the *live* (latest) position
   board: null,
-  solving: false,            // true while user is expected to make the solving move
-  moveCursor: 0,              // index into puzzle.moves the engine is at
+  boardResizeWired: false,
+  solving: false,          // true while it is the user's turn to find the solving move
+  moveCursor: 0,            // index into puzzle.moves the live game has reached
+  fenHistory: [],           // fen snapshot after each ply played (index 0 = puzzle start fen)
+  viewIndex: 0,             // which fen in fenHistory is currently shown on the board (review mode)
   boardOrientation: 'white',
   puzzleStartTime: null,
+  sessionSolved: 0,
+  difficultyMin: 0,
+  difficultyMax: 9999,
   settings: loadSettings(),
   stats: loadStats(),
   favorites: loadJSON('cpt_favorites', []),
@@ -407,7 +455,7 @@ function saveJSON(key, val){
 function loadSettings(){
   return loadJSON('cpt_settings', {
     theme:'dark', sound:true, animations:true, coordinates:true,
-    autoFlip:false, pieceStyle:'wikipedia', boardColor:'brown'
+    autoFlip:false, autoAdvance:false, pieceStyle:'wikipedia', boardColor:'brown'
   });
 }
 function saveSettings(){ saveJSON('cpt_settings', state.settings); }
@@ -431,7 +479,6 @@ async function fetchJSONCached(url){
   const res = await fetch(url);
   if(!res.ok) throw new Error('Failed to fetch ' + url + ' (' + res.status + ')');
   const data = await res.json();
-  // simple LRU: evict oldest entry once over the limit
   if(state.cache.size >= CONFIG.CACHE_LIMIT){
     const oldestKey = state.cache.keys().next().value;
     state.cache.delete(oldestKey);
@@ -443,7 +490,6 @@ async function fetchJSONCached(url){
 async function getPieceFileList(piece){
   if(state.pieceIndexCache.has(piece)) return state.pieceIndexCache.get(piece);
   const idx = await fetchJSONCached(`${CONFIG.REPO_BASE}/${piece}/index.json`);
-  // index.json is expected to be an array of filenames (e.g. ["part0001.json", ...])
   const list = Array.isArray(idx) ? idx : (idx.files || idx[piece] || []);
   state.pieceIndexCache.set(piece, list);
   return list;
@@ -452,20 +498,28 @@ async function getPieceFileList(piece){
 async function getRandomPuzzleForPiece(piece){
   const files = await getPieceFileList(piece);
   if(!files.length) throw new Error('No puzzle files found for ' + piece);
-  const file = files[Math.floor(Math.random() * files.length)];
-  const url = `${CONFIG.REPO_BASE}/${piece}/${file}`;
-  const puzzles = await fetchJSONCached(url);
-  const arr = Array.isArray(puzzles) ? puzzles : (puzzles.puzzles || []);
-  if(!arr.length) throw new Error('Empty puzzle file: ' + file);
-  const puzzle = arr[Math.floor(Math.random() * arr.length)];
-  return puzzle;
+  // try a handful of random files so a difficulty filter has a chance of matching
+  const tried = new Set();
+  for(let attempt=0; attempt<6 && tried.size < files.length; attempt++){
+    const file = files[Math.floor(Math.random() * files.length)];
+    if(tried.has(file)) continue;
+    tried.add(file);
+    const url = `${CONFIG.REPO_BASE}/${piece}/${file}`;
+    const puzzles = await fetchJSONCached(url);
+    const arr = Array.isArray(puzzles) ? puzzles : (puzzles.puzzles || []);
+    if(!arr.length) continue;
+    const candidates = arr.filter(p=>{
+      const r = typeof p.rating === 'number' ? p.rating : 0;
+      return r >= state.difficultyMin && r <= state.difficultyMax;
+    });
+    const pool = candidates.length ? candidates : arr;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  throw new Error('No puzzles found matching the current filters.');
 }
 
 /* ============================================================
    UCI MOVE PARSING
-   Puzzle data stores moves as raw UCI strings, e.g. "e8d7" or
-   a 5-char promotion move like "e7e8q". chess.js needs an
-   object: { from, to, promotion }.
    ============================================================ */
 function parseUCI(uci){
   return {
@@ -476,7 +530,7 @@ function parseUCI(uci){
 }
 
 /* ============================================================
-   SOUND (lightweight WebAudio beeps — no external audio files)
+   SOUND
    ============================================================ */
 let audioCtx = null;
 function beep(freq, duration, type='sine'){
@@ -512,7 +566,7 @@ function toast(msg){
 }
 
 /* ============================================================
-   NAVIGATION
+   NAVIGATION (screens)
    ============================================================ */
 function showScreen(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -521,6 +575,7 @@ function showScreen(name){
     b.classList.toggle('active', b.dataset.screen === name);
   });
   if(name === 'stats') renderStats();
+  if(name === 'trainer' && state.board) setTimeout(()=>state.board.resize(), 50);
 }
 document.querySelectorAll('.nav-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>showScreen(btn.dataset.screen));
@@ -528,7 +583,7 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
 document.getElementById('trainerBack').addEventListener('click', ()=>showScreen('home'));
 
 /* ============================================================
-   HOME SCREEN — render piece cards
+   HOME SCREEN
    ============================================================ */
 function renderPieceGrid(){
   const grid = document.getElementById('pieceGrid');
@@ -544,7 +599,6 @@ function renderPieceGrid(){
     `;
     card.addEventListener('click', (e)=>{ ripple(card,e); startTraining(p.key); });
     grid.appendChild(card);
-    // lazily fetch just the piece index to report puzzle count, not the puzzles themselves
     getPieceFileList(p.key).then(files=>{
       document.getElementById('count-' + p.key).textContent = files.length + ' files';
     }).catch(()=>{ document.getElementById('count-' + p.key).textContent = 'offline'; });
@@ -562,6 +616,15 @@ function ripple(el, evt){
   el.appendChild(r);
   setTimeout(()=>r.remove(), 650);
 }
+
+document.querySelectorAll('#difficultyRow .chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#difficultyRow .chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    state.difficultyMin = Number(chip.dataset.min);
+    state.difficultyMax = Number(chip.dataset.max);
+  });
+});
 
 document.getElementById('chipRandom').addEventListener('click', ()=>{
   const p = PIECES[Math.floor(Math.random()*PIECES.length)];
@@ -591,11 +654,20 @@ function initBoardIfNeeded(){
     showNotation: state.settings.coordinates,
     onDragStart, onDrop, onSnapEnd
   });
-  window.addEventListener('resize', ()=>state.board && state.board.resize());
+  if(!state.boardResizeWired){
+    window.addEventListener('resize', ()=>state.board && state.board.resize());
+    state.boardResizeWired = true;
+  }
+}
+function rebuildBoard(){
+  // Recreate the board (needed when showNotation / pieceTheme options change,
+  // since chessboard.js 1.0.0 has no setter for those after construction).
+  if(state.board && state.board.destroy) state.board.destroy();
+  state.board = null;
+  initBoardIfNeeded();
+  refreshBoardPosition(false);
 }
 function pieceThemeUrl(piece){
-  // cdnjs only mirrors the chessboard-js JS/CSS, not the piece image assets,
-  // so piece images are served from the official chessboardjs.com host instead.
   const style = state.settings.pieceStyle || 'wikipedia';
   return `https://chessboardjs.com/img/chesspieces/${style}/${piece}.png`;
 }
@@ -607,6 +679,7 @@ async function startTraining(pieceKey, presetPuzzle){
   document.getElementById('trainerTitle').textContent = capitalize(pieceKey) + ' Trainer';
   setStatus('Fetching puzzle…', 'info');
   document.getElementById('loadingOverlay').classList.remove('hidden');
+  setDragEnabled(false); // never allow drags while a fetch is in flight
   try{
     const puzzle = presetPuzzle || await getRandomPuzzleForPiece(pieceKey);
     loadPuzzle(pieceKey, puzzle);
@@ -619,13 +692,13 @@ async function startTraining(pieceKey, presetPuzzle){
 }
 
 async function startDailyPuzzle(){
-  // deterministic "random" pick seeded by today's date so every user gets the same daily puzzle
   const today = new Date().toISOString().slice(0,10);
   const seedPiece = PIECES[hashStr(today) % PIECES.length].key;
   showScreen('trainer');
   initBoardIfNeeded();
   setStatus('Fetching daily puzzle…', 'info');
   document.getElementById('loadingOverlay').classList.remove('hidden');
+  setDragEnabled(false);
   try{
     const files = await getPieceFileList(seedPiece);
     const file = files[hashStr(today + seedPiece) % files.length];
@@ -652,25 +725,30 @@ function loadPuzzle(pieceKey, puzzle){
   state.currentPuzzle = puzzle;
   state.chess = new Chess(puzzle.fen);
   state.moveCursor = 0;
+  state.fenHistory = [puzzle.fen];
+  state.viewIndex = 0;
   state.solving = false;
   state.puzzleStartTime = Date.now();
+  setDragEnabled(false);
 
-  // Orientation: face the side that is about to solve (after the opponent's setup move)
   const sideToSolve = state.chess.turn() === 'w' ? 'black' : 'white';
   state.boardOrientation = state.settings.autoFlip ? sideToSolve : 'white';
   state.board.orientation(state.boardOrientation);
   state.board.position(puzzle.fen, false);
 
   renderPuzzleInfo(pieceKey, puzzle);
+  renderMoveList();
   updateFavoriteButton();
+  updateNavButtons();
   setStatus('Watch the setup move…', 'info');
 
   // moves[0] is the opponent's "setup" move per Lichess puzzle convention.
-  // Play it automatically, then hand control to the player for moves[1].
   setTimeout(()=>{
-    applyMoveToBoard(puzzle.moves[0]);
+    if(state.currentPuzzle !== puzzle) return; // a newer puzzle has since been loaded
+    applyMoveToBoard(puzzle.moves[0], true);
     state.moveCursor = 1;
     state.solving = true;
+    setDragEnabled(true);
     setStatus('Your move — find the best continuation.', 'info');
   }, 600);
 }
@@ -681,17 +759,37 @@ function renderPuzzleInfo(pieceKey, puzzle){
   document.getElementById('infoPopularity').textContent = (puzzle.popularity ?? '—') + (puzzle.popularity!=null?'%':'');
   document.getElementById('infoPlays').textContent = puzzle.nbPlays ?? '—';
   document.getElementById('infoId').textContent = puzzle.puzzleId ?? '—';
+  document.getElementById('infoSession').textContent = state.sessionSolved;
   const themesEl = document.getElementById('infoThemes');
   themesEl.innerHTML = (puzzle.themes||[]).map(t=>`<span class="theme-tag">${t}</span>`).join('') || '—';
   const opEl = document.getElementById('infoOpening');
   opEl.textContent = (puzzle.openingTags && puzzle.openingTags.length) ? puzzle.openingTags.join(', ') : 'No opening tag';
 }
+function updateMoveCounter(){
+  const total = state.currentPuzzle ? state.currentPuzzle.moves.length : 0;
+  document.getElementById('infoMoveCount').textContent = total ? `${Math.min(state.moveCursor,total)} / ${total}` : '—';
+}
 
-function applyMoveToBoard(uci){
+/**
+ * Applies a UCI move to the *live* chess.js game (state.chess) and pushes a
+ * fen snapshot onto fenHistory. If `showOnBoard` is true (default) and we are
+ * currently viewing the latest position, the board updates immediately;
+ * otherwise the board stays put so we don't yank the user out of review mode.
+ */
+function applyMoveToBoard(uci, showOnBoard){
   const mv = parseUCI(uci);
   const result = state.chess.move(mv);
-  if(result) state.board.position(state.chess.fen());
+  if(!result) return null;
+  state.fenHistory.push(state.chess.fen());
+  const wasAtLatest = state.viewIndex === state.fenHistory.length - 2;
+  if(wasAtLatest){
+    state.viewIndex = state.fenHistory.length - 1;
+    if(showOnBoard !== false) state.board.position(state.chess.fen());
+  }
   sfx.move();
+  renderMoveList();
+  updateMoveCounter();
+  updateNavButtons();
   return result;
 }
 
@@ -701,25 +799,31 @@ function setStatus(msg, cls){
   el.className = 'status-bar' + (cls ? ' ' + cls : '');
 }
 
+function setDragEnabled(enabled){
+  // chessboard.js 1.0.0 has no direct draggable setter; we gate everything
+  // through state.solving inside onDragStart instead, this just mirrors intent.
+  state.dragEnabled = enabled;
+}
+
 /* ---- drag & drop handlers ---- */
 function onDragStart(source, piece){
-  if(!state.solving || !state.currentPuzzle) return false;
+  if(!state.dragEnabled || !state.solving || !state.currentPuzzle) return false;
+  if(state.viewIndex !== state.fenHistory.length - 1) return false; // can't move while reviewing history
   if(state.chess.game_over()) return false;
-  // only allow picking up pieces belonging to the side on move
-  if((state.chess.turn()==='w' && piece.search(/^b/)!==-1) ||
-     (state.chess.turn()==='b' && piece.search(/^w/)!==-1)) return false;
+  const isWhitePiece = /^w/.test(piece);
+  if((state.chess.turn()==='w') !== isWhitePiece) return false;
+  return true;
 }
 
 function onDrop(source, target){
-  if(!state.solving) return 'snapback';
-  const expected = parseUCI(state.currentPuzzle.moves[state.moveCursor]);
+  if(!state.dragEnabled || !state.solving) return 'snapback';
+  if(!state.currentPuzzle || state.moveCursor >= state.currentPuzzle.moves.length) return 'snapback';
 
-  // Illegal move per chess rules -> snap back
+  const expected = parseUCI(state.currentPuzzle.moves[state.moveCursor]);
   const legalMoves = state.chess.moves({verbose:true});
   const isLegal = legalMoves.some(m=>m.from===source && m.to===target);
   if(!isLegal) return 'snapback';
 
-  // Legal but not the puzzle's solving move -> wrong (red), snap back, count attempt
   if(source !== expected.from || target !== expected.to){
     registerAttempt(false);
     flashSquare(target, 'sq-wrong');
@@ -728,34 +832,62 @@ function onDrop(source, target){
     return 'snapback';
   }
 
-  // Correct move
-  const moveObj = { from: source, to: target, promotion: expected.promotion };
-  state.chess.move(moveObj);
-  state.board.position(state.chess.fen());
+  // Correct move. Resolve under-promotion choice if this move is a pawn promotion.
+  const isPromotion = (state.chess.get(source)||{}).type === 'p' &&
+                       (target[1] === '8' || target[1] === '1');
+  let promotionPiece = expected.promotion || 'q';
+  if(isPromotion && expected.promotion === 'q'){
+    // The puzzle data defaults unspecified promotions to queen; ask the user
+    // to confirm so under-promotion puzzles aren't silently mis-scored.
+    const choice = window.prompt('Promote to (q, r, b, n):', 'q');
+    if(choice && /^[qrbn]$/i.test(choice.trim())) promotionPiece = choice.trim().toLowerCase();
+  }
+
+  const moveObj = { from: source, to: target, promotion: promotionPiece };
+  const result = state.chess.move(moveObj);
+  if(!result){
+    // safety net: should not happen given the legality + match checks above
+    return 'snapback';
+  }
+  state.fenHistory.push(state.chess.fen());
+  state.viewIndex = state.fenHistory.length - 1;
+
   flashSquare(target, 'sq-correct');
   sfx.correct();
   registerAttempt(true);
   state.moveCursor++;
   state.solving = false;
+  setDragEnabled(false);
   setStatus('Correct!', 'correct');
+  renderMoveList();
+  updateMoveCounter();
+  updateNavButtons();
 
   if(state.moveCursor >= state.currentPuzzle.moves.length){
     finishPuzzle();
   }else{
-    // auto-play the opponent's reply, then re-enable solving if more player moves remain
     setTimeout(playNextAutoMove, CONFIG.AUTO_MOVE_DELAY);
   }
+  // Returning undefined (not 'snapback') tells chessboard.js the move is accepted
+  // and it will animate the piece itself; we still resync via onSnapEnd.
 }
-function onSnapEnd(){ state.board.position(state.chess.fen()); }
+function onSnapEnd(){
+  // Always resync to whatever fen the live game (or current review index) holds,
+  // since chessboard.js's own internal position can drift from chess.js otherwise.
+  const fen = state.fenHistory[state.viewIndex] || state.chess.fen();
+  state.board.position(fen, false);
+}
 
 function playNextAutoMove(){
   if(!state.currentPuzzle || state.moveCursor >= state.currentPuzzle.moves.length) return;
   applyMoveToBoard(state.currentPuzzle.moves[state.moveCursor]);
   state.moveCursor++;
+  updateMoveCounter();
   if(state.moveCursor >= state.currentPuzzle.moves.length){
     finishPuzzle();
   }else{
     state.solving = true;
+    setDragEnabled(true);
     setStatus('Your move — continue the line.', 'info');
   }
 }
@@ -771,9 +903,15 @@ function flashSquare(square, cls){
 function finishPuzzle(){
   setStatus('Puzzle solved! 🎉', 'correct');
   sfx.success();
+  setDragEnabled(false);
   const elapsed = Date.now() - state.puzzleStartTime;
   recordSolve(state.currentPiece, state.currentPuzzle.rating, elapsed);
   addToRecents(state.currentPiece, state.currentPuzzle);
+  state.sessionSolved++;
+  document.getElementById('infoSession').textContent = state.sessionSolved;
+  if(state.settings.autoAdvance){
+    setTimeout(()=>{ if(state.currentPiece) startTraining(state.currentPiece); }, CONFIG.AUTO_ADVANCE_DELAY);
+  }
 }
 
 /* ============================================================
@@ -811,10 +949,76 @@ function addToRecents(piece, puzzle){
 }
 
 /* ============================================================
+   MOVE LIST / NOTATION + REVIEW NAVIGATION
+   ============================================================ */
+function renderMoveList(){
+  const el = document.getElementById('moveList');
+  if(!state.chess){ el.textContent = '—'; return; }
+  const history = state.chess.history();
+  if(!history.length){ el.textContent = '—'; return; }
+  el.innerHTML = '';
+  history.forEach((san, i)=>{
+    if(i % 2 === 0){
+      const num = document.createElement('span');
+      num.className = 'mnum';
+      num.textContent = (Math.floor(i/2)+1) + '.';
+      el.appendChild(num);
+    }
+    const mv = document.createElement('span');
+    mv.className = 'mv' + (i + 1 === state.viewIndex ? ' current' : '');
+    mv.textContent = san;
+    mv.dataset.idx = i + 1; // index into fenHistory
+    mv.addEventListener('click', ()=>jumpToFenIndex(i+1));
+    el.appendChild(mv);
+  });
+}
+
+function jumpToFenIndex(idx){
+  if(!state.fenHistory.length) return;
+  idx = Math.max(0, Math.min(idx, state.fenHistory.length - 1));
+  state.viewIndex = idx;
+  state.board.position(state.fenHistory[idx], false);
+  renderMoveList();
+  updateNavButtons();
+  // Disable dragging while reviewing a past position; resuming play requires "latest".
+  setDragEnabled(idx === state.fenHistory.length - 1 && state.solving);
+}
+function updateNavButtons(){
+  const atStart = state.viewIndex <= 0;
+  const atLatest = !state.fenHistory.length || state.viewIndex >= state.fenHistory.length - 1;
+  document.getElementById('btnFirst').disabled = atStart;
+  document.getElementById('btnPrev').disabled = atStart;
+  document.getElementById('btnNextMove').disabled = atLatest;
+  document.getElementById('btnLast').disabled = atLatest;
+  document.getElementById('btnUndo').disabled = !(state.currentPuzzle && state.moveCursor > 1 && atLatest && !state.solving === false ? true : (state.currentPuzzle && state.moveCursor > 1));
+}
+document.getElementById('btnFirst').addEventListener('click', ()=>jumpToFenIndex(0));
+document.getElementById('btnPrev').addEventListener('click', ()=>jumpToFenIndex(state.viewIndex - 1));
+document.getElementById('btnNextMove').addEventListener('click', ()=>jumpToFenIndex(state.viewIndex + 1));
+document.getElementById('btnLast').addEventListener('click', ()=>jumpToFenIndex(state.fenHistory.length - 1));
+
+document.getElementById('btnUndo').addEventListener('click', ()=>{
+  if(!state.currentPuzzle || state.moveCursor <= 1) return; // never undo past the auto-played setup move
+  // Roll the live game back one full ply (the player's last accepted move).
+  state.chess.undo();
+  state.fenHistory.pop();
+  state.moveCursor--;
+  state.viewIndex = state.fenHistory.length - 1;
+  state.board.position(state.fenHistory[state.viewIndex], false);
+  state.solving = true;
+  setDragEnabled(true);
+  setStatus('Move undone — try again.', 'info');
+  renderMoveList();
+  updateMoveCounter();
+  updateNavButtons();
+});
+
+/* ============================================================
    ACTION BUTTONS — hint / solution / next / resign / new random
    ============================================================ */
 document.getElementById('btnHint').addEventListener('click', ()=>{
   if(!state.solving || !state.currentPuzzle) return toast('No active puzzle to hint.');
+  if(state.viewIndex !== state.fenHistory.length - 1){ toast('Jump back to the latest move first.'); return; }
   const expected = parseUCI(state.currentPuzzle.moves[state.moveCursor]);
   flashSquare(expected.from, 'sq-hint');
   setStatus('Hint: look at the highlighted square.', 'info');
@@ -823,17 +1027,20 @@ document.getElementById('btnHint').addEventListener('click', ()=>{
 document.getElementById('btnSolution').addEventListener('click', ()=>{
   if(!state.currentPuzzle) return;
   state.solving = false;
+  setDragEnabled(false);
   breakStreak();
+  jumpToFenIndex(state.fenHistory.length - 1);
   setStatus('Playing full solution…', 'info');
   playOutSolutionFromCursor();
 });
 function playOutSolutionFromCursor(){
-  if(state.moveCursor >= state.currentPuzzle.moves.length){
+  if(!state.currentPuzzle || state.moveCursor >= state.currentPuzzle.moves.length){
     setStatus('Solution complete.', 'info');
     return;
   }
   applyMoveToBoard(state.currentPuzzle.moves[state.moveCursor]);
   state.moveCursor++;
+  updateMoveCounter();
   setTimeout(playOutSolutionFromCursor, CONFIG.AUTO_MOVE_DELAY);
 }
 
@@ -849,6 +1056,8 @@ document.getElementById('btnResign').addEventListener('click', ()=>{
   breakStreak();
   setStatus('Resigned. Here is the solution:', 'wrong');
   state.solving = false;
+  setDragEnabled(false);
+  jumpToFenIndex(state.fenHistory.length - 1);
   playOutSolutionFromCursor();
 });
 document.getElementById('btnFlip').addEventListener('click', ()=>{
@@ -870,6 +1079,29 @@ function updateFavoriteButton(){
   const isFav = state.favorites.some(f=>f.puzzle.puzzleId === id);
   document.getElementById('btnFavorite').textContent = isFav ? '★' : '☆';
 }
+
+document.getElementById('btnCopyFen').addEventListener('click', async ()=>{
+  if(!state.fenHistory.length) return;
+  const fen = state.fenHistory[state.viewIndex];
+  try{ await navigator.clipboard.writeText(fen); toast('FEN copied'); }
+  catch(e){ toast(fen); }
+});
+document.getElementById('btnCopyPgn').addEventListener('click', async ()=>{
+  if(!state.chess) return;
+  const pgn = state.chess.pgn();
+  try{ await navigator.clipboard.writeText(pgn); toast('PGN copied'); }
+  catch(e){ toast('Could not copy PGN'); }
+});
+
+/* ---- keyboard shortcuts ---- */
+document.addEventListener('keydown', (e)=>{
+  if(!document.getElementById('screen-trainer').classList.contains('active')) return;
+  if(e.target && /input|textarea|select/i.test(e.target.tagName)) return;
+  if(e.key === 'ArrowLeft'){ jumpToFenIndex(state.viewIndex - 1); }
+  else if(e.key === 'ArrowRight'){ jumpToFenIndex(state.viewIndex + 1); }
+  else if(e.key.toLowerCase() === 'h'){ document.getElementById('btnHint').click(); }
+  else if(e.key.toLowerCase() === 'n'){ document.getElementById('btnNext').click(); }
+});
 
 /* ============================================================
    STATISTICS SCREEN RENDER
@@ -926,16 +1158,15 @@ function wireToggle(id, key, onChange){
 wireToggle('toggleTheme', 'theme', v=>{ /* single dark theme by design; reserved for future light mode */ });
 wireToggle('toggleSound', 'sound');
 wireToggle('toggleAnim', 'animations');
-wireToggle('toggleCoords', 'coordinates', v=>{
-  if(state.board){ state.board.destroy?.(); state.board = null; initBoardIfNeeded(); if(state.currentPuzzle) state.board.position(state.chess.fen(), false); }
-});
+wireToggle('toggleCoords', 'coordinates', v=>{ rebuildBoard(); });
 wireToggle('toggleAutoFlip', 'autoFlip');
+wireToggle('toggleAutoAdvance', 'autoAdvance');
 
 document.getElementById('selPieceStyle').value = state.settings.pieceStyle;
 document.getElementById('selPieceStyle').addEventListener('change', e=>{
   state.settings.pieceStyle = e.target.value;
   saveSettings();
-  if(state.board){ state.board.destroy?.(); state.board=null; initBoardIfNeeded(); if(state.currentPuzzle) state.board.position(state.chess.fen(), false); }
+  rebuildBoard();
 });
 
 document.querySelectorAll('#boardColorRow .color-dot').forEach(dot=>{
@@ -955,8 +1186,24 @@ function applyBoardColor(){
   const c = map[state.settings.boardColor] || map.brown;
   document.documentElement.style.setProperty('--board-light', c.light);
   document.documentElement.style.setProperty('--board-dark', c.dark);
-  document.querySelectorAll('.white-1e1d7').forEach(el=>el.style.background = c.light);
-  document.querySelectorAll('.black-3c85d').forEach(el=>el.style.background = c.dark);
+  // chessboard.js 1.0.0 uses data-square-color attributes rather than the old
+  // hashed class names from 0.x, so target those instead of the stale
+  // ".white-1e1d7" / ".black-3c85d" selectors which no longer exist.
+  document.querySelectorAll('#board [data-square-color="white"]').forEach(el=>el.style.background = c.light);
+  document.querySelectorAll('#board [data-square-color="black"]').forEach(el=>el.style.background = c.dark);
+}
+
+/* ============================================================
+   refreshBoardPosition — keep board, chess.js, and fenHistory in sync
+   after a rebuild (e.g. settings change) without losing puzzle state
+   ============================================================ */
+function refreshBoardPosition(animate){
+  if(!state.board) return;
+  state.board.orientation(state.boardOrientation);
+  if(state.fenHistory.length){
+    state.board.position(state.fenHistory[state.viewIndex], !!animate);
+  }
+  applyBoardColor();
 }
 
 /* ============================================================
@@ -967,6 +1214,7 @@ function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
 async function init(){
   renderPieceGrid();
   applyBoardColor();
+  updateNavButtons();
   try{
     state.masterIndex = await fetchJSONCached(`${CONFIG.REPO_BASE}/index.json`);
   }catch(e){ console.warn('Master index unavailable yet:', e); }
