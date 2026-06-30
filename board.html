@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover">
+
+<title>Chessground Demo</title>
+
+<style>
+html,body{
+    margin:0;
+    height:100%;
+    background:#111418;
+    font-family:Inter,system-ui,sans-serif;
+}
+
+body{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+main{
+    width:min(96vw,560px);
+}
+
+#board{
+    width:100%;
+    aspect-ratio:1;
+    border-radius:20px;
+    overflow:hidden;
+    box-shadow:0 18px 60px rgba(0,0,0,.45);
+}
+
+cg-board{
+    border-radius:20px;
+}
+</style>
+</head>
+
+<body>
+
+<main>
+
+<div id="board"></div>
+
+</main>
+
+<script type="module">
+
+/*
+
+THIS FILE IS FOR YOUR CHESSGROUND FORK.
+
+After building Chessground, replace the import path
+with the generated ES module.
+
+Example:
+
+import { Chessground } from "./dist/chessground.js";
+
+or
+
+import { Chessground } from "./assets/chessground.js";
+
+depending on where the build outputs it.
+
+*/
+
+import { Chessground } from "./dist/chessground.js";
+
+const config = {
+
+    orientation: "white",
+
+    coordinates: true,
+
+    movable: {
+
+        free: true,
+
+        color: "both"
+
+    },
+
+    draggable: {
+
+        enabled: true,
+
+        showGhost: true
+
+    },
+
+    selectable: {
+
+        enabled: true
+
+    },
+
+    highlight: {
+
+        lastMove: true,
+
+        check: true
+
+    },
+
+    animation: {
+
+        enabled: true,
+
+        duration: 180
+
+    }
+
+};
+
+const boardElement = document.getElementById("board");
+
+Chessground(boardElement, config);
+
+</script>
+
+</body>
+</html>
