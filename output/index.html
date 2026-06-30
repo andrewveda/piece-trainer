@@ -1,0 +1,981 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chess Piece Trainer</title>
+<meta name="description" content="Master tactical patterns one piece at a time.">
+<meta name="theme-color" content="#0b0e14">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230b0e14'/%3E%3Ctext x='50' y='68' font-size='60' text-anchor='middle' fill='%23d4af37'%3E%E2%99%9E%3C/text%3E%3C/svg%3E">
+
+<!-- ============================================================
+     EXTERNAL LIBRARIES (the only two allowed)
+     ============================================================ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root{
+  --bg:#0b0e14;
+  --bg2:#11151f;
+  --panel:rgba(255,255,255,0.045);
+  --panel-border:rgba(212,175,55,0.16);
+  --gold:#d4af37;
+  --gold-soft:#e8cf76;
+  --teal:#1f3a3a;
+  --text:#e8e6df;
+  --text-dim:#9aa0ad;
+  --green:#5fbf6e;
+  --red:#e1564e;
+  --radius:18px;
+  --serif:Georgia,'Iowan Old Style','Palatino Linotype',serif;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden;}
+body{position:relative;min-height:100vh;padding-bottom:78px;}
+::-webkit-scrollbar{width:8px;}
+::-webkit-scrollbar-thumb{background:var(--panel-border);border-radius:8px;}
+@media (prefers-reduced-motion: reduce){*{animation-duration:0.01ms !important;transition-duration:0.01ms !important;}}
+
+/* ambient animated background */
+.bg-glow{position:fixed;inset:0;z-index:-1;overflow:hidden;}
+.bg-glow span{position:absolute;border-radius:50%;filter:blur(70px);opacity:0.18;animation:float 16s ease-in-out infinite;}
+.bg-glow span:nth-child(1){width:340px;height:340px;background:var(--gold);top:-80px;left:-60px;animation-duration:18s;}
+.bg-glow span:nth-child(2){width:260px;height:260px;background:var(--teal);bottom:-60px;right:-40px;animation-duration:22s;animation-delay:2s;}
+.bg-glow span:nth-child(3){width:200px;height:200px;background:#4a3f6b;top:40%;left:60%;animation-duration:20s;animation-delay:4s;}
+@keyframes float{0%,100%{transform:translate(0,0);}50%{transform:translate(30px,-25px);}}
+
+.bg-pieces{position:fixed;inset:0;z-index:-1;opacity:0.04;font-size:120px;pointer-events:none;overflow:hidden;}
+.bg-pieces span{position:absolute;animation:drift 30s linear infinite;}
+@keyframes drift{0%{transform:translateY(0) rotate(0deg);}100%{transform:translateY(-40px) rotate(8deg);}}
+
+/* glass panel base */
+.glass{background:var(--panel);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--panel-border);border-radius:var(--radius);}
+
+h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;}
+
+/* screens */
+.screen{display:none;animation:fadeIn 0.35s ease;}
+.screen.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* ===================== HOME ===================== */
+.home-header{padding:48px 20px 18px;text-align:center;}
+.home-header h1{font-size:clamp(28px,7vw,42px);background:linear-gradient(135deg,var(--gold-soft),var(--gold) 60%,#fff3d0);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.home-header p{color:var(--text-dim);margin-top:8px;font-size:15px;}
+
+.piece-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;padding:8px 16px 24px;max-width:760px;margin:0 auto;}
+@media (min-width:640px){.piece-grid{grid-template-columns:repeat(3,1fr);}}
+
+.piece-card{position:relative;overflow:hidden;padding:20px 14px 16px;text-align:center;cursor:pointer;transition:transform 0.18s ease, border-color 0.18s ease;-webkit-user-select:none;user-select:none;}
+.piece-card:active{transform:scale(0.96);}
+.piece-card:hover{border-color:var(--gold);transform:translateY(-3px);}
+.piece-card .glyph{font-size:46px;line-height:1;display:block;margin-bottom:8px;filter:drop-shadow(0 0 14px rgba(212,175,55,0.35));}
+.piece-card .pname{font-family:var(--serif);font-size:17px;}
+.piece-card .pdesc{color:var(--text-dim);font-size:12px;margin-top:4px;min-height:28px;}
+.piece-card .pcount{margin-top:8px;font-size:11px;color:var(--gold-soft);letter-spacing:0.4px;}
+.piece-card .ripple{position:absolute;border-radius:50%;background:rgba(212,175,55,0.35);transform:scale(0);animation:rip 0.6s ease-out;pointer-events:none;}
+@keyframes rip{to{transform:scale(4);opacity:0;}}
+
+.section-label{padding:18px 20px 6px;font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:var(--text-dim);}
+.quick-row{display:flex;gap:10px;padding:0 16px 20px;overflow-x:auto;}
+.chip{flex:0 0 auto;padding:10px 16px;border-radius:999px;font-size:13px;color:var(--text);cursor:pointer;white-space:nowrap;}
+.chip:active{transform:scale(0.96);}
+
+/* ===================== BOTTOM NAV ===================== */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:50;display:flex;justify-content:space-around;padding:10px 8px calc(10px + env(safe-area-inset-bottom));background:rgba(11,14,20,0.85);backdrop-filter:blur(16px);border-top:1px solid var(--panel-border);}
+.nav-btn{background:none;border:none;color:var(--text-dim);font-family:var(--sans);font-size:11px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 14px;cursor:pointer;border-radius:10px;transition:color .15s;}
+.nav-btn .ic{font-size:19px;}
+.nav-btn.active{color:var(--gold);}
+
+/* ===================== TRAINER ===================== */
+.trainer-wrap{display:flex;flex-direction:column;max-width:1100px;margin:0 auto;padding:14px 12px 20px;gap:14px;}
+@media (min-width:880px){.trainer-wrap{flex-direction:row;align-items:flex-start;}}
+.board-col{flex:1;min-width:0;}
+.board-shell{max-width:560px;margin:0 auto;position:relative;}
+#board{width:100%;border-radius:10px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,0.5);}
+.board-toolbar{display:flex;justify-content:space-between;align-items:center;padding:6px 2px 10px;max-width:560px;margin:0 auto;}
+.icon-btn{background:var(--panel);border:1px solid var(--panel-border);color:var(--text);width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;}
+.icon-btn:active{transform:scale(0.92);}
+.status-bar{max-width:560px;margin:0 auto 6px;text-align:center;min-height:24px;font-size:14px;font-weight:600;letter-spacing:0.2px;}
+.status-bar.correct{color:var(--green);}
+.status-bar.wrong{color:var(--red);}
+.status-bar.info{color:var(--gold-soft);}
+
+.action-row{display:flex;flex-wrap:wrap;gap:8px;max-width:560px;margin:10px auto 0;justify-content:center;}
+.btn{font-family:var(--sans);font-size:13px;font-weight:600;padding:11px 16px;border-radius:12px;border:1px solid var(--panel-border);background:var(--panel);color:var(--text);cursor:pointer;min-height:42px;}
+.btn:active{transform:scale(0.96);}
+.btn.primary{background:linear-gradient(135deg,var(--gold-soft),var(--gold));color:#1a1404;border:none;}
+.btn.danger{border-color:rgba(225,86,78,0.4);color:var(--red);}
+
+.side-panel{width:100%;max-width:340px;margin:0 auto;}
+@media (min-width:880px){.side-panel{width:320px;flex:0 0 320px;}}
+.info-card{padding:18px;margin-bottom:12px;}
+.info-card h3{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:10px;}
+.info-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);}
+.info-row:last-child{border-bottom:none;}
+.info-row .v{color:var(--gold-soft);font-weight:600;text-align:right;max-width:60%;}
+.theme-tag{display:inline-block;font-size:11px;padding:3px 9px;margin:3px 3px 0 0;border-radius:999px;background:rgba(212,175,55,0.12);color:var(--gold-soft);}
+
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:14px;color:var(--text-dim);}
+.spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--panel-border);border-top-color:var(--gold);animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* board square highlight animations */
+.sq-correct{box-shadow:inset 0 0 0 9999px rgba(95,191,110,0.45)!important;}
+.sq-wrong{animation:shake 0.4s;}
+@keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}}
+.sq-hint{box-shadow:inset 0 0 0 9999px rgba(212,175,55,0.5)!important;}
+
+/* ===================== STATS ===================== */
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:14px 16px;max-width:760px;margin:0 auto;}
+@media (min-width:640px){.stats-grid{grid-template-columns:repeat(4,1fr);}}
+.stat-card{padding:16px;text-align:center;}
+.stat-card .big{font-family:var(--serif);font-size:26px;color:var(--gold-soft);}
+.stat-card .lbl{font-size:11px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:0.6px;}
+.piece-stats{max-width:760px;margin:0 auto;padding:0 16px 24px;}
+.piece-stat-row{display:flex;align-items:center;gap:10px;padding:10px 14px;margin-bottom:8px;}
+.piece-stat-row .pg{font-size:22px;width:30px;}
+.bar-track{flex:1;height:8px;border-radius:6px;background:rgba(255,255,255,0.07);overflow:hidden;}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-soft));}
+.piece-stat-row .pct{font-size:12px;color:var(--text-dim);width:42px;text-align:right;}
+
+/* ===================== SETTINGS / ABOUT ===================== */
+.simple-screen{max-width:600px;margin:0 auto;padding:16px;}
+.settings-row{display:flex;justify-content:space-between;align-items:center;padding:16px;margin-bottom:10px;}
+.settings-row .lbl{font-size:14px;}
+.settings-row .sub{font-size:11px;color:var(--text-dim);margin-top:2px;}
+.switch{position:relative;width:46px;height:26px;border-radius:999px;background:rgba(255,255,255,0.12);cursor:pointer;}
+.switch.on{background:var(--gold);}
+.switch .knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .18s;}
+.switch.on .knob{left:23px;}
+.select-pill{background:rgba(255,255,255,0.07);border:1px solid var(--panel-border);color:var(--text);border-radius:10px;padding:8px 10px;font-size:13px;}
+.color-dot{width:22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,0.2);cursor:pointer;}
+.color-row{display:flex;gap:8px;}
+
+.about-card{padding:22px;line-height:1.6;font-size:14px;color:var(--text-dim);}
+.about-card h3{color:var(--text);margin-bottom:8px;}
+
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(20,24,33,0.95);border:1px solid var(--panel-border);padding:10px 18px;border-radius:12px;font-size:13px;z-index:80;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+
+.topbar{display:flex;align-items:center;gap:10px;padding:18px 16px 4px;max-width:760px;margin:0 auto;}
+.topbar h2{font-size:22px;}
+.back-btn{background:none;border:none;color:var(--gold);font-size:22px;cursor:pointer;padding:4px 8px;}
+
+.hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<div class="bg-glow"><span></span><span></span><span></span></div>
+<div class="bg-pieces" aria-hidden="true">
+  <span style="left:8%;top:10%;">♞</span><span style="left:70%;top:6%;animation-delay:-6s;">♝</span>
+  <span style="left:30%;top:60%;animation-delay:-12s;">♜</span><span style="left:85%;top:55%;animation-delay:-4s;">♛</span>
+</div>
+
+<!-- =========================================================
+     HOME SCREEN
+     ========================================================= -->
+<section id="screen-home" class="screen active">
+  <div class="home-header">
+    <h1>Chess Piece Trainer</h1>
+    <p>Master tactical patterns one piece at a time.</p>
+  </div>
+
+  <div class="piece-grid" id="pieceGrid"><!-- piece cards injected by JS --></div>
+
+  <div class="section-label">Quick Start</div>
+  <div class="quick-row">
+    <div class="chip glass" id="chipRandom">🎲 Random Piece</div>
+    <div class="chip glass" id="chipDaily">📅 Daily Puzzle</div>
+    <div class="chip glass" id="chipFav">⭐ Favorites</div>
+    <div class="chip glass" id="chipRecent">🕘 Recent</div>
+  </div>
+</section>
+
+<!-- =========================================================
+     TRAINER SCREEN
+     ========================================================= -->
+<section id="screen-trainer" class="screen">
+  <div class="topbar">
+    <button class="back-btn" id="trainerBack">←</button>
+    <h2 id="trainerTitle">Trainer</h2>
+  </div>
+
+  <div class="trainer-wrap">
+    <div class="board-col">
+      <div class="board-shell">
+        <div id="board"></div>
+        <div id="loadingOverlay" class="loading hidden">
+          <div class="spinner"></div>
+          <div>Fetching puzzle…</div>
+        </div>
+      </div>
+      <div class="board-toolbar">
+        <button class="icon-btn" id="btnFlip" title="Flip board">⇅</button>
+        <div class="status-bar info" id="statusBar">Choose a piece to begin</div>
+        <button class="icon-btn" id="btnFavorite" title="Favorite">☆</button>
+      </div>
+      <div class="action-row">
+        <button class="btn" id="btnHint">💡 Hint</button>
+        <button class="btn" id="btnSolution">📖 Solution</button>
+        <button class="btn primary" id="btnNext">Next Puzzle →</button>
+        <button class="btn danger" id="btnResign">Resign</button>
+        <button class="btn" id="btnNewRandom">🔀 New Random</button>
+      </div>
+    </div>
+
+    <div class="side-panel">
+      <div class="info-card glass">
+        <h3>Puzzle Info</h3>
+        <div class="info-row"><span>Piece</span><span class="v" id="infoPiece">—</span></div>
+        <div class="info-row"><span>Rating</span><span class="v" id="infoRating">—</span></div>
+        <div class="info-row"><span>Popularity</span><span class="v" id="infoPopularity">—</span></div>
+        <div class="info-row"><span>Times Played</span><span class="v" id="infoPlays">—</span></div>
+        <div class="info-row"><span>Puzzle ID</span><span class="v" id="infoId">—</span></div>
+      </div>
+      <div class="info-card glass">
+        <h3>Themes</h3>
+        <div id="infoThemes">—</div>
+      </div>
+      <div class="info-card glass">
+        <h3>Opening</h3>
+        <div id="infoOpening" style="font-size:13px;color:var(--text-dim);">—</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================
+     STATISTICS SCREEN
+     ========================================================= -->
+<section id="screen-stats" class="screen">
+  <div class="topbar"><h2>Statistics</h2></div>
+  <div class="stats-grid">
+    <div class="stat-card glass"><div class="big" id="stTotal">0</div><div class="lbl">Solved</div></div>
+    <div class="stat-card glass"><div class="big" id="stAccuracy">0%</div><div class="lbl">Accuracy</div></div>
+    <div class="stat-card glass"><div class="big" id="stStreak">0</div><div class="lbl">Current Streak</div></div>
+    <div class="stat-card glass"><div class="big" id="stBest">0</div><div class="lbl">Best Streak</div></div>
+    <div class="stat-card glass"><div class="big" id="stAvgRating">—</div><div class="lbl">Avg Rating</div></div>
+    <div class="stat-card glass"><div class="big" id="stDaily">0</div><div class="lbl">Solved Today</div></div>
+    <div class="stat-card glass"><div class="big" id="stTime">0m</div><div class="lbl">Total Time</div></div>
+    <div class="stat-card glass"><div class="big" id="stAttempts">0</div><div class="lbl">Attempts</div></div>
+  </div>
+  <div class="section-label">Per-Piece Accuracy</div>
+  <div class="piece-stats" id="pieceStatsList"></div>
+  <div style="text-align:center;padding-bottom:20px;">
+    <button class="btn danger" id="btnResetStats">Reset Statistics</button>
+  </div>
+</section>
+
+<!-- =========================================================
+     SETTINGS SCREEN
+     ========================================================= -->
+<section id="screen-settings" class="screen">
+  <div class="simple-screen">
+    <div class="topbar" style="padding:2px 0 4px;"><h2>Settings</h2></div>
+
+    <div class="settings-row glass">
+      <div><div class="lbl">Dark Theme</div><div class="sub">Toggle light / dark appearance</div></div>
+      <div class="switch on" id="toggleTheme"><div class="knob"></div></div>
+    </div>
+    <div class="settings-row glass">
+      <div><div class="lbl">Sound</div><div class="sub">Move, correct, wrong, success sounds</div></div>
+      <div class="switch on" id="toggleSound"><div class="knob"></div></div>
+    </div>
+    <div class="settings-row glass">
+      <div><div class="lbl">Animations</div><div class="sub">Glow, shake, pulse effects</div></div>
+      <div class="switch on" id="toggleAnim"><div class="knob"></div></div>
+    </div>
+    <div class="settings-row glass">
+      <div><div class="lbl">Coordinates</div><div class="sub">Show board file/rank labels</div></div>
+      <div class="switch on" id="toggleCoords"><div class="knob"></div></div>
+    </div>
+    <div class="settings-row glass">
+      <div><div class="lbl">Flip Board Automatically</div><div class="sub">Orient board to solving side</div></div>
+      <div class="switch" id="toggleAutoFlip"><div class="knob"></div></div>
+    </div>
+    <div class="settings-row glass">
+      <div><div class="lbl">Piece Style</div></div>
+      <select class="select-pill" id="selPieceStyle">
+        <option value="wikipedia">Classic</option>
+        <option value="alpha">Alpha</option>
+        <option value="merida">Merida</option>
+      </select>
+    </div>
+    <div class="settings-row glass">
+      <div><div class="lbl">Board Color</div></div>
+      <div class="color-row" id="boardColorRow">
+        <div class="color-dot" data-c="brown" style="background:#b58863;"></div>
+        <div class="color-dot" data-c="green" style="background:#779556;"></div>
+        <div class="color-dot" data-c="blue" style="background:#4b6f9e;"></div>
+        <div class="color-dot" data-c="gray" style="background:#6e6e6e;"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================
+     ABOUT SCREEN
+     ========================================================= -->
+<section id="screen-about" class="screen">
+  <div class="simple-screen">
+    <div class="topbar" style="padding:2px 0 4px;"><h2>About</h2></div>
+    <div class="about-card glass">
+      <h3>Chess Piece Trainer</h3>
+      <p>A focused tactics trainer that lets you drill puzzles by the piece that delivers the winning move — pawns, knights, bishops, rooks, queens, and kings each have their own pattern language. Pick a piece, solve the first move, and watch the combination play out.</p>
+      <p>Puzzles are streamed live from a Lichess-derived puzzle database, organized by piece and loaded one at a time to keep the app fast and light — nothing is ever preloaded in bulk.</p>
+      <p>Built with vanilla HTML, CSS and JavaScript, plus chess.js and chessboard.js. No frameworks, no build step — runs entirely on GitHub Pages.</p>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================
+     BOTTOM NAVIGATION
+     ========================================================= -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-screen="home"><span class="ic">♟</span>Home</button>
+  <button class="nav-btn" data-screen="stats"><span class="ic">📊</span>Statistics</button>
+  <button class="nav-btn" data-screen="settings"><span class="ic">⚙️</span>Settings</button>
+  <button class="nav-btn" data-screen="about"><span class="ic">ℹ️</span>About</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+/* ============================================================
+   CONFIGURATION
+   ============================================================ */
+const CONFIG = {
+  // Raw GitHub content base for the puzzle database (andrewveda/piece-trainer, branch main, /output)
+  REPO_BASE: 'https://raw.githubusercontent.com/andrewveda/piece-trainer/main/output',
+  CACHE_LIMIT: 24,        // max number of JSON files kept in memory cache
+  AUTO_MOVE_DELAY: 480,   // ms between auto-played moves in a solution line
+};
+
+const PIECES = [
+  { key:'pawn',   glyph:'♙', name:'Pawn',   desc:'Small steps, big breakthroughs' },
+  { key:'knight', glyph:'♘', name:'Knight', desc:'Forks and awkward geometry' },
+  { key:'bishop', glyph:'♗', name:'Bishop', desc:'Long diagonals, pins & skewers' },
+  { key:'rook',   glyph:'♖', name:'Rook',   desc:'Open files, back-rank danger' },
+  { key:'queen',  glyph:'♕', name:'Queen',  desc:'Power plays and mating nets' },
+  { key:'king',   glyph:'♔', name:'King',   desc:'Endgame technique & safety' },
+];
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const state = {
+  cache: new Map(),          // url -> parsed JSON  (LRU-ish)
+  pieceIndexCache: new Map(),// piece -> file list
+  masterIndex: null,
+  currentPiece: null,
+  currentPuzzle: null,
+  chess: null,
+  board: null,
+  solving: false,            // true while user is expected to make the solving move
+  moveCursor: 0,              // index into puzzle.moves the engine is at
+  boardOrientation: 'white',
+  puzzleStartTime: null,
+  settings: loadSettings(),
+  stats: loadStats(),
+  favorites: loadJSON('cpt_favorites', []),
+  recents: loadJSON('cpt_recents', []),
+};
+
+/* ============================================================
+   STORAGE HELPERS
+   ============================================================ */
+function loadJSON(key, fallback){
+  try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch(e){ return fallback; }
+}
+function saveJSON(key, val){
+  try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){/* storage full / unavailable */}
+}
+function loadSettings(){
+  return loadJSON('cpt_settings', {
+    theme:'dark', sound:true, animations:true, coordinates:true,
+    autoFlip:false, pieceStyle:'wikipedia', boardColor:'brown'
+  });
+}
+function saveSettings(){ saveJSON('cpt_settings', state.settings); }
+
+function loadStats(){
+  return loadJSON('cpt_stats', {
+    totalSolved:0, totalAttempts:0, correctFirstTry:0,
+    currentStreak:0, bestStreak:0, ratingSum:0, ratingCount:0,
+    totalTimeMs:0, dailyDate:null, dailyCount:0,
+    perPiece:{ pawn:{solved:0,attempts:0}, knight:{solved:0,attempts:0}, bishop:{solved:0,attempts:0},
+               rook:{solved:0,attempts:0}, queen:{solved:0,attempts:0}, king:{solved:0,attempts:0} }
+  });
+}
+function saveStats(){ saveJSON('cpt_stats', state.stats); }
+
+/* ============================================================
+   NETWORKING — lazy fetch with small in-memory cache
+   ============================================================ */
+async function fetchJSONCached(url){
+  if(state.cache.has(url)) return state.cache.get(url);
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('Failed to fetch ' + url + ' (' + res.status + ')');
+  const data = await res.json();
+  // simple LRU: evict oldest entry once over the limit
+  if(state.cache.size >= CONFIG.CACHE_LIMIT){
+    const oldestKey = state.cache.keys().next().value;
+    state.cache.delete(oldestKey);
+  }
+  state.cache.set(url, data);
+  return data;
+}
+
+async function getPieceFileList(piece){
+  if(state.pieceIndexCache.has(piece)) return state.pieceIndexCache.get(piece);
+  const idx = await fetchJSONCached(`${CONFIG.REPO_BASE}/${piece}/index.json`);
+  // index.json is expected to be an array of filenames (e.g. ["part0001.json", ...])
+  const list = Array.isArray(idx) ? idx : (idx.files || idx[piece] || []);
+  state.pieceIndexCache.set(piece, list);
+  return list;
+}
+
+async function getRandomPuzzleForPiece(piece){
+  const files = await getPieceFileList(piece);
+  if(!files.length) throw new Error('No puzzle files found for ' + piece);
+  const file = files[Math.floor(Math.random() * files.length)];
+  const url = `${CONFIG.REPO_BASE}/${piece}/${file}`;
+  const puzzles = await fetchJSONCached(url);
+  const arr = Array.isArray(puzzles) ? puzzles : (puzzles.puzzles || []);
+  if(!arr.length) throw new Error('Empty puzzle file: ' + file);
+  const puzzle = arr[Math.floor(Math.random() * arr.length)];
+  return puzzle;
+}
+
+/* ============================================================
+   UCI MOVE PARSING
+   Puzzle data stores moves as raw UCI strings, e.g. "e8d7" or
+   a 5-char promotion move like "e7e8q". chess.js needs an
+   object: { from, to, promotion }.
+   ============================================================ */
+function parseUCI(uci){
+  return {
+    from: uci.slice(0,2),
+    to: uci.slice(2,4),
+    promotion: uci.length > 4 ? uci.slice(4) : 'q'
+  };
+}
+
+/* ============================================================
+   SOUND (lightweight WebAudio beeps — no external audio files)
+   ============================================================ */
+let audioCtx = null;
+function beep(freq, duration, type='sine'){
+  if(!state.settings.sound) return;
+  try{
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + duration);
+  }catch(e){/* audio unavailable */}
+}
+const sfx = {
+  move: ()=>beep(420,0.08),
+  correct: ()=>beep(660,0.18),
+  wrong: ()=>beep(160,0.25,'square'),
+  success: ()=>{beep(523,0.12);setTimeout(()=>beep(659,0.12),120);setTimeout(()=>beep(784,0.22),240);}
+};
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+let toastTimer = null;
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 1800);
+}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.screen === name);
+  });
+  if(name === 'stats') renderStats();
+}
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>showScreen(btn.dataset.screen));
+});
+document.getElementById('trainerBack').addEventListener('click', ()=>showScreen('home'));
+
+/* ============================================================
+   HOME SCREEN — render piece cards
+   ============================================================ */
+function renderPieceGrid(){
+  const grid = document.getElementById('pieceGrid');
+  grid.innerHTML = '';
+  PIECES.forEach(p=>{
+    const card = document.createElement('div');
+    card.className = 'piece-card glass';
+    card.innerHTML = `
+      <span class="glyph">${p.glyph}</span>
+      <div class="pname">${p.name}</div>
+      <div class="pdesc">${p.desc}</div>
+      <div class="pcount" id="count-${p.key}">…</div>
+    `;
+    card.addEventListener('click', (e)=>{ ripple(card,e); startTraining(p.key); });
+    grid.appendChild(card);
+    // lazily fetch just the piece index to report puzzle count, not the puzzles themselves
+    getPieceFileList(p.key).then(files=>{
+      document.getElementById('count-' + p.key).textContent = files.length + ' files';
+    }).catch(()=>{ document.getElementById('count-' + p.key).textContent = 'offline'; });
+  });
+}
+function ripple(el, evt){
+  if(!state.settings.animations) return;
+  const r = document.createElement('span');
+  r.className = 'ripple';
+  const rect = el.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  r.style.width = r.style.height = size + 'px';
+  r.style.left = (evt.clientX - rect.left - size/2) + 'px';
+  r.style.top = (evt.clientY - rect.top - size/2) + 'px';
+  el.appendChild(r);
+  setTimeout(()=>r.remove(), 650);
+}
+
+document.getElementById('chipRandom').addEventListener('click', ()=>{
+  const p = PIECES[Math.floor(Math.random()*PIECES.length)];
+  startTraining(p.key);
+});
+document.getElementById('chipDaily').addEventListener('click', startDailyPuzzle);
+document.getElementById('chipFav').addEventListener('click', ()=>{
+  if(!state.favorites.length){ toast('No favorites yet — star a puzzle while solving it.'); return; }
+  const fav = state.favorites[Math.floor(Math.random()*state.favorites.length)];
+  startTraining(fav.piece, fav.puzzle);
+});
+document.getElementById('chipRecent').addEventListener('click', ()=>{
+  if(!state.recents.length){ toast('No recently solved puzzles yet.'); return; }
+  const r = state.recents[0];
+  startTraining(r.piece, r.puzzle);
+});
+
+/* ============================================================
+   TRAINER — chessboard.js + chess.js wiring
+   ============================================================ */
+function initBoardIfNeeded(){
+  if(state.board) return;
+  state.board = Chessboard('board', {
+    draggable: true,
+    position: 'start',
+    pieceTheme: pieceThemeUrl,
+    showNotation: state.settings.coordinates,
+    onDragStart, onDrop, onSnapEnd
+  });
+  window.addEventListener('resize', ()=>state.board && state.board.resize());
+}
+function pieceThemeUrl(piece){
+  // cdnjs only mirrors the chessboard-js JS/CSS, not the piece image assets,
+  // so piece images are served from the official chessboardjs.com host instead.
+  const style = state.settings.pieceStyle || 'wikipedia';
+  return `https://chessboardjs.com/img/chesspieces/${style}/${piece}.png`;
+}
+
+async function startTraining(pieceKey, presetPuzzle){
+  showScreen('trainer');
+  initBoardIfNeeded();
+  state.currentPiece = pieceKey;
+  document.getElementById('trainerTitle').textContent = capitalize(pieceKey) + ' Trainer';
+  setStatus('Fetching puzzle…', 'info');
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+  try{
+    const puzzle = presetPuzzle || await getRandomPuzzleForPiece(pieceKey);
+    loadPuzzle(pieceKey, puzzle);
+  }catch(err){
+    setStatus('Could not load puzzle — check your connection.', 'wrong');
+    console.error(err);
+  }finally{
+    document.getElementById('loadingOverlay').classList.add('hidden');
+  }
+}
+
+async function startDailyPuzzle(){
+  // deterministic "random" pick seeded by today's date so every user gets the same daily puzzle
+  const today = new Date().toISOString().slice(0,10);
+  const seedPiece = PIECES[hashStr(today) % PIECES.length].key;
+  showScreen('trainer');
+  initBoardIfNeeded();
+  setStatus('Fetching daily puzzle…', 'info');
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+  try{
+    const files = await getPieceFileList(seedPiece);
+    const file = files[hashStr(today + seedPiece) % files.length];
+    const data = await fetchJSONCached(`${CONFIG.REPO_BASE}/${seedPiece}/${file}`);
+    const arr = Array.isArray(data) ? data : (data.puzzles || []);
+    const puzzle = arr[hashStr(today + file) % arr.length];
+    document.getElementById('trainerTitle').textContent = 'Daily Puzzle';
+    loadPuzzle(seedPiece, puzzle);
+  }catch(err){
+    setStatus('Could not load daily puzzle.', 'wrong');
+    console.error(err);
+  }finally{
+    document.getElementById('loadingOverlay').classList.add('hidden');
+  }
+}
+function hashStr(s){
+  let h = 0;
+  for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) >>> 0; }
+  return h;
+}
+
+function loadPuzzle(pieceKey, puzzle){
+  state.currentPiece = pieceKey;
+  state.currentPuzzle = puzzle;
+  state.chess = new Chess(puzzle.fen);
+  state.moveCursor = 0;
+  state.solving = false;
+  state.puzzleStartTime = Date.now();
+
+  // Orientation: face the side that is about to solve (after the opponent's setup move)
+  const sideToSolve = state.chess.turn() === 'w' ? 'black' : 'white';
+  state.boardOrientation = state.settings.autoFlip ? sideToSolve : 'white';
+  state.board.orientation(state.boardOrientation);
+  state.board.position(puzzle.fen, false);
+
+  renderPuzzleInfo(pieceKey, puzzle);
+  updateFavoriteButton();
+  setStatus('Watch the setup move…', 'info');
+
+  // moves[0] is the opponent's "setup" move per Lichess puzzle convention.
+  // Play it automatically, then hand control to the player for moves[1].
+  setTimeout(()=>{
+    applyMoveToBoard(puzzle.moves[0]);
+    state.moveCursor = 1;
+    state.solving = true;
+    setStatus('Your move — find the best continuation.', 'info');
+  }, 600);
+}
+
+function renderPuzzleInfo(pieceKey, puzzle){
+  document.getElementById('infoPiece').textContent = capitalize(pieceKey);
+  document.getElementById('infoRating').textContent = puzzle.rating ?? '—';
+  document.getElementById('infoPopularity').textContent = (puzzle.popularity ?? '—') + (puzzle.popularity!=null?'%':'');
+  document.getElementById('infoPlays').textContent = puzzle.nbPlays ?? '—';
+  document.getElementById('infoId').textContent = puzzle.puzzleId ?? '—';
+  const themesEl = document.getElementById('infoThemes');
+  themesEl.innerHTML = (puzzle.themes||[]).map(t=>`<span class="theme-tag">${t}</span>`).join('') || '—';
+  const opEl = document.getElementById('infoOpening');
+  opEl.textContent = (puzzle.openingTags && puzzle.openingTags.length) ? puzzle.openingTags.join(', ') : 'No opening tag';
+}
+
+function applyMoveToBoard(uci){
+  const mv = parseUCI(uci);
+  const result = state.chess.move(mv);
+  if(result) state.board.position(state.chess.fen());
+  sfx.move();
+  return result;
+}
+
+function setStatus(msg, cls){
+  const el = document.getElementById('statusBar');
+  el.textContent = msg;
+  el.className = 'status-bar' + (cls ? ' ' + cls : '');
+}
+
+/* ---- drag & drop handlers ---- */
+function onDragStart(source, piece){
+  if(!state.solving || !state.currentPuzzle) return false;
+  if(state.chess.game_over()) return false;
+  // only allow picking up pieces belonging to the side on move
+  if((state.chess.turn()==='w' && piece.search(/^b/)!==-1) ||
+     (state.chess.turn()==='b' && piece.search(/^w/)!==-1)) return false;
+}
+
+function onDrop(source, target){
+  if(!state.solving) return 'snapback';
+  const expected = parseUCI(state.currentPuzzle.moves[state.moveCursor]);
+
+  // Illegal move per chess rules -> snap back
+  const legalMoves = state.chess.moves({verbose:true});
+  const isLegal = legalMoves.some(m=>m.from===source && m.to===target);
+  if(!isLegal) return 'snapback';
+
+  // Legal but not the puzzle's solving move -> wrong (red), snap back, count attempt
+  if(source !== expected.from || target !== expected.to){
+    registerAttempt(false);
+    flashSquare(target, 'sq-wrong');
+    sfx.wrong();
+    setStatus('Not quite — try again.', 'wrong');
+    return 'snapback';
+  }
+
+  // Correct move
+  const moveObj = { from: source, to: target, promotion: expected.promotion };
+  state.chess.move(moveObj);
+  state.board.position(state.chess.fen());
+  flashSquare(target, 'sq-correct');
+  sfx.correct();
+  registerAttempt(true);
+  state.moveCursor++;
+  state.solving = false;
+  setStatus('Correct!', 'correct');
+
+  if(state.moveCursor >= state.currentPuzzle.moves.length){
+    finishPuzzle();
+  }else{
+    // auto-play the opponent's reply, then re-enable solving if more player moves remain
+    setTimeout(playNextAutoMove, CONFIG.AUTO_MOVE_DELAY);
+  }
+}
+function onSnapEnd(){ state.board.position(state.chess.fen()); }
+
+function playNextAutoMove(){
+  if(!state.currentPuzzle || state.moveCursor >= state.currentPuzzle.moves.length) return;
+  applyMoveToBoard(state.currentPuzzle.moves[state.moveCursor]);
+  state.moveCursor++;
+  if(state.moveCursor >= state.currentPuzzle.moves.length){
+    finishPuzzle();
+  }else{
+    state.solving = true;
+    setStatus('Your move — continue the line.', 'info');
+  }
+}
+
+function flashSquare(square, cls){
+  if(!state.settings.animations) return;
+  const sq = document.querySelector(`#board .square-${square}`);
+  if(!sq) return;
+  sq.classList.add(cls);
+  setTimeout(()=>sq.classList.remove(cls), 500);
+}
+
+function finishPuzzle(){
+  setStatus('Puzzle solved! 🎉', 'correct');
+  sfx.success();
+  const elapsed = Date.now() - state.puzzleStartTime;
+  recordSolve(state.currentPiece, state.currentPuzzle.rating, elapsed);
+  addToRecents(state.currentPiece, state.currentPuzzle);
+}
+
+/* ============================================================
+   STATS RECORDING
+   ============================================================ */
+function registerAttempt(correct){
+  state.stats.totalAttempts++;
+  if(correct) state.stats.correctFirstTry++;
+  const ps = state.stats.perPiece[state.currentPiece];
+  if(ps) ps.attempts++;
+  saveStats();
+}
+function recordSolve(piece, rating, elapsedMs){
+  const s = state.stats;
+  s.totalSolved++;
+  s.currentStreak++;
+  s.bestStreak = Math.max(s.bestStreak, s.currentStreak);
+  if(typeof rating === 'number'){ s.ratingSum += rating; s.ratingCount++; }
+  s.totalTimeMs += elapsedMs;
+  const today = new Date().toISOString().slice(0,10);
+  if(s.dailyDate !== today){ s.dailyDate = today; s.dailyCount = 0; }
+  s.dailyCount++;
+  if(s.perPiece[piece]) s.perPiece[piece].solved++;
+  saveStats();
+}
+function breakStreak(){
+  state.stats.currentStreak = 0;
+  saveStats();
+}
+function addToRecents(piece, puzzle){
+  state.recents = state.recents.filter(r=>r.puzzle.puzzleId !== puzzle.puzzleId);
+  state.recents.unshift({ piece, puzzle });
+  state.recents = state.recents.slice(0, 20);
+  saveJSON('cpt_recents', state.recents);
+}
+
+/* ============================================================
+   ACTION BUTTONS — hint / solution / next / resign / new random
+   ============================================================ */
+document.getElementById('btnHint').addEventListener('click', ()=>{
+  if(!state.solving || !state.currentPuzzle) return toast('No active puzzle to hint.');
+  const expected = parseUCI(state.currentPuzzle.moves[state.moveCursor]);
+  flashSquare(expected.from, 'sq-hint');
+  setStatus('Hint: look at the highlighted square.', 'info');
+});
+
+document.getElementById('btnSolution').addEventListener('click', ()=>{
+  if(!state.currentPuzzle) return;
+  state.solving = false;
+  breakStreak();
+  setStatus('Playing full solution…', 'info');
+  playOutSolutionFromCursor();
+});
+function playOutSolutionFromCursor(){
+  if(state.moveCursor >= state.currentPuzzle.moves.length){
+    setStatus('Solution complete.', 'info');
+    return;
+  }
+  applyMoveToBoard(state.currentPuzzle.moves[state.moveCursor]);
+  state.moveCursor++;
+  setTimeout(playOutSolutionFromCursor, CONFIG.AUTO_MOVE_DELAY);
+}
+
+document.getElementById('btnNext').addEventListener('click', ()=>{
+  if(state.currentPiece) startTraining(state.currentPiece);
+});
+document.getElementById('btnNewRandom').addEventListener('click', ()=>{
+  const p = PIECES[Math.floor(Math.random()*PIECES.length)];
+  startTraining(p.key);
+});
+document.getElementById('btnResign').addEventListener('click', ()=>{
+  if(!state.currentPuzzle) return;
+  breakStreak();
+  setStatus('Resigned. Here is the solution:', 'wrong');
+  state.solving = false;
+  playOutSolutionFromCursor();
+});
+document.getElementById('btnFlip').addEventListener('click', ()=>{
+  state.board.flip();
+  state.boardOrientation = state.boardOrientation === 'white' ? 'black' : 'white';
+});
+document.getElementById('btnFavorite').addEventListener('click', toggleFavorite);
+function toggleFavorite(){
+  if(!state.currentPuzzle) return;
+  const id = state.currentPuzzle.puzzleId;
+  const idx = state.favorites.findIndex(f=>f.puzzle.puzzleId === id);
+  if(idx >= 0){ state.favorites.splice(idx,1); toast('Removed from favorites'); }
+  else{ state.favorites.push({piece:state.currentPiece, puzzle:state.currentPuzzle}); toast('Added to favorites'); }
+  saveJSON('cpt_favorites', state.favorites);
+  updateFavoriteButton();
+}
+function updateFavoriteButton(){
+  const id = state.currentPuzzle && state.currentPuzzle.puzzleId;
+  const isFav = state.favorites.some(f=>f.puzzle.puzzleId === id);
+  document.getElementById('btnFavorite').textContent = isFav ? '★' : '☆';
+}
+
+/* ============================================================
+   STATISTICS SCREEN RENDER
+   ============================================================ */
+function renderStats(){
+  const s = state.stats;
+  document.getElementById('stTotal').textContent = s.totalSolved;
+  const acc = s.totalAttempts ? Math.round((s.correctFirstTry / s.totalAttempts) * 100) : 0;
+  document.getElementById('stAccuracy').textContent = acc + '%';
+  document.getElementById('stStreak').textContent = s.currentStreak;
+  document.getElementById('stBest').textContent = s.bestStreak;
+  document.getElementById('stAvgRating').textContent = s.ratingCount ? Math.round(s.ratingSum / s.ratingCount) : '—';
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('stDaily').textContent = (s.dailyDate === today) ? s.dailyCount : 0;
+  document.getElementById('stTime').textContent = Math.round(s.totalTimeMs / 60000) + 'm';
+  document.getElementById('stAttempts').textContent = s.totalAttempts;
+
+  const list = document.getElementById('pieceStatsList');
+  list.innerHTML = '';
+  PIECES.forEach(p=>{
+    const ps = s.perPiece[p.key] || {solved:0, attempts:0};
+    const pct = ps.attempts ? Math.round((ps.solved / ps.attempts) * 100) : 0;
+    const row = document.createElement('div');
+    row.className = 'piece-stat-row glass';
+    row.innerHTML = `
+      <span class="pg">${p.glyph}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+      <span class="pct">${pct}%</span>
+    `;
+    list.appendChild(row);
+  });
+}
+document.getElementById('btnResetStats').addEventListener('click', ()=>{
+  if(!confirm('Reset all statistics? This cannot be undone.')) return;
+  state.stats = loadStats();
+  localStorage.removeItem('cpt_stats');
+  renderStats();
+  toast('Statistics reset');
+});
+
+/* ============================================================
+   SETTINGS SCREEN
+   ============================================================ */
+function wireToggle(id, key, onChange){
+  const el = document.getElementById(id);
+  el.classList.toggle('on', !!state.settings[key]);
+  el.addEventListener('click', ()=>{
+    state.settings[key] = !state.settings[key];
+    el.classList.toggle('on', state.settings[key]);
+    saveSettings();
+    if(onChange) onChange(state.settings[key]);
+  });
+}
+wireToggle('toggleTheme', 'theme', v=>{ /* single dark theme by design; reserved for future light mode */ });
+wireToggle('toggleSound', 'sound');
+wireToggle('toggleAnim', 'animations');
+wireToggle('toggleCoords', 'coordinates', v=>{
+  if(state.board){ state.board.destroy?.(); state.board = null; initBoardIfNeeded(); if(state.currentPuzzle) state.board.position(state.chess.fen(), false); }
+});
+wireToggle('toggleAutoFlip', 'autoFlip');
+
+document.getElementById('selPieceStyle').value = state.settings.pieceStyle;
+document.getElementById('selPieceStyle').addEventListener('change', e=>{
+  state.settings.pieceStyle = e.target.value;
+  saveSettings();
+  if(state.board){ state.board.destroy?.(); state.board=null; initBoardIfNeeded(); if(state.currentPuzzle) state.board.position(state.chess.fen(), false); }
+});
+
+document.querySelectorAll('#boardColorRow .color-dot').forEach(dot=>{
+  dot.addEventListener('click', ()=>{
+    state.settings.boardColor = dot.dataset.c;
+    saveSettings();
+    applyBoardColor();
+  });
+});
+function applyBoardColor(){
+  const map = {
+    brown:{light:'#f0d9b5',dark:'#b58863'},
+    green:{light:'#eeeed2',dark:'#779556'},
+    blue:{light:'#dee3e6',dark:'#4b6f9e'},
+    gray:{light:'#e8e8e8',dark:'#6e6e6e'}
+  };
+  const c = map[state.settings.boardColor] || map.brown;
+  document.documentElement.style.setProperty('--board-light', c.light);
+  document.documentElement.style.setProperty('--board-dark', c.dark);
+  document.querySelectorAll('.white-1e1d7').forEach(el=>el.style.background = c.light);
+  document.querySelectorAll('.black-3c85d').forEach(el=>el.style.background = c.dark);
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+
+async function init(){
+  renderPieceGrid();
+  applyBoardColor();
+  try{
+    state.masterIndex = await fetchJSONCached(`${CONFIG.REPO_BASE}/index.json`);
+  }catch(e){ console.warn('Master index unavailable yet:', e); }
+
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js').catch(()=>{/* offline-shell registration is best-effort */});
+  }
+}
+init();
+</script>
+</body>
+</html>
