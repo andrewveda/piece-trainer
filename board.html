@@ -1,126 +1,201 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Minimalist Mobile Chess</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/chessground/assets/chessground.css">
+    <link rel="stylesheet" href="https://unpkg.com/chessground/assets/theme/cburnett.css">
 
-<title>Chessground Demo</title>
+    <style>
+        :root {
+            --bg-color: #161512;
+            --text-color: #bababa;
+            --btn-bg: #262421;
+            --btn-active: #363431;
+        }
 
-<style>
-html,body{
-    margin:0;
-    height:100%;
-    background:#111418;
-    font-family:Inter,system-ui,sans-serif;
-}
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100dvh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
 
-body{
-    display:flex;
-    justify-content:center;
-    align-items:center;
-}
+        #app-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            max-width: 500px;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
 
-main{
-    width:min(96vw,560px);
-}
+        #board-wrapper {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
 
-#board{
-    width:100%;
-    aspect-ratio:1;
-    border-radius:20px;
-    overflow:hidden;
-    box-shadow:0 18px 60px rgba(0,0,0,.45);
-}
+        #chess-board {
+            width: min(100vw - 40px, 100dvh - 160px);
+            height: min(100vw - 40px, 100dvh - 160px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            overflow: hidden;
+        }
 
-cg-board{
-    border-radius:20px;
-}
-</style>
+        /* Minimalist UI Controls */
+        #ui-controls {
+            display: flex;
+            width: 100%;
+            gap: 12px;
+            justify-content: space-around;
+            margin-top: 16px;
+            margin-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        .ui-btn {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: var(--btn-bg);
+            border: none;
+            color: var(--text-color);
+            padding: 12px 8px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: background 0.15s ease, transform 0.1s ease;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .ui-btn:active {
+            background: var(--btn-active);
+            transform: scale(0.95);
+        }
+    </style>
 </head>
-
 <body>
 
-<main>
+    <div id="app-container">
+        <div id="board-wrapper">
+            <div id="chess-board" class="blue cburnett"></div>
+        </div>
 
-<div id="board"></div>
+        <div id="ui-controls">
+            <button id="btn-undo" class="ui-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+                <span>Undo</span>
+            </button>
+            <button id="btn-flip" class="ui-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 3h5v5"/></svg>
+                <span>Flip</span>
+            </button>
+            <button id="btn-reset" class="ui-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                <span>Reset</span>
+            </button>
+        </div>
+    </div>
 
-</main>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="https://unpkg.com/chessground"></script>
 
-<script type="module">
+    <script>
+        // Initialize the chess.js engine
+        const chess = new Chess();
+        let cg;
 
-/*
+        // Extract legal moves for Chessground format
+        function getValidDestinations() {
+            const dests = new Map();
+            chess.moves({ verbose: true }).forEach(m => {
+                if (!dests.has(m.from)) dests.set(m.from, []);
+                dests.get(m.from).push(m.to);
+            });
+            return dests;
+        }
 
-THIS FILE IS FOR YOUR CHESSGROUND FORK.
+        // Handle piece drops
+        function onMoveExecuted(from, to) {
+            const move = chess.move({
+                from: from,
+                to: to,
+                promotion: 'q' // Auto-promote to queen for simple mobile play
+            });
 
-After building Chessground, replace the import path
-with the generated ES module.
+            if (move) {
+                syncBoardState();
+            }
+        }
 
-Example:
+        // Sync rules engine with UI layer
+        function syncBoardState() {
+            const activeColor = chess.turn() === 'w' ? 'white' : 'black';
+            cg.set({
+                fen: chess.fen(),
+                turnColor: activeColor,
+                movable: {
+                    color: activeColor,
+                    dests: getValidDestinations()
+                },
+                check: chess.in_check()
+            });
+        }
 
-import { Chessground } from "./dist/chessground.js";
+        // Initialize Chessground
+        cg = Chessground(document.getElementById('chess-board'), {
+            fen: chess.fen(),
+            orientation: 'white',
+            turnColor: 'white',
+            animation: { enabled: true, duration: 200 },
+            movable: {
+                color: 'white',
+                free: false,
+                dests: getValidDestinations()
+            },
+            events: {
+                move: onMoveExecuted
+            }
+        });
 
-or
+        // UI Event Listeners
+        document.getElementById('btn-undo').addEventListener('click', () => {
+            chess.undo();
+            syncBoardState();
+        });
 
-import { Chessground } from "./assets/chessground.js";
+        document.getElementById('btn-flip').addEventListener('click', () => {
+            cg.toggleOrientation();
+        });
 
-depending on where the build outputs it.
-
-*/
-
-import { Chessground } from "./dist/chessground.js";
-
-const config = {
-
-    orientation: "white",
-
-    coordinates: true,
-
-    movable: {
-
-        free: true,
-
-        color: "both"
-
-    },
-
-    draggable: {
-
-        enabled: true,
-
-        showGhost: true
-
-    },
-
-    selectable: {
-
-        enabled: true
-
-    },
-
-    highlight: {
-
-        lastMove: true,
-
-        check: true
-
-    },
-
-    animation: {
-
-        enabled: true,
-
-        duration: 180
-
-    }
-
-};
-
-const boardElement = document.getElementById("board");
-
-Chessground(boardElement, config);
-
-</script>
-
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            chess.reset();
+            syncBoardState();
+            cg.set({ orientation: 'white' });
+        });
+    </script>
 </body>
 </html>
