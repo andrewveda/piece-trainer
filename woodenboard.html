@@ -19,433 +19,830 @@
 
 <style>
 /* ============================================================
-   DESIGN TOKENS
+   DESIGN TOKENS & GLOBALS
    ============================================================ */
-:root{
-  --bg:#0b0e14;
-  --bg2:#11151f;
-  --panel:rgba(255,255,255,0.045);
-  --panel-border:rgba(212,175,55,0.16);
-  --gold:#d4af37;
-  --gold-soft:#e8cf76;
-  --teal:#1f3a3a;
-  --text:#e8e6df;
-  --text-dim:#9aa0ad;
-  --green:#5fbf6e;
-  --red:#e1564e;
-  --radius:18px;
-  --serif:Georgia,'Iowan Old Style','Palatino Linotype',serif;
-  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+:root {
+  --bg: #0b0e14;
+  --bg2: #11151f;
+  --panel: rgba(255, 255, 255, 0.045);
+  --panel-border: rgba(212, 175, 55, 0.16);
+  --gold: #d4af37;
+  --gold-soft: #e8cf76;
+  --teal: #1f3a3a;
+  --text: #e8e6df;
+  --text-dim: #9aa0ad;
+  --green: #5fbf6e;
+  --red: #e1564e;
+  --radius: 18px;
+  --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden;}
-body{position:relative;min-height:100vh;padding-bottom:78px;}
-::-webkit-scrollbar{width:8px;}
-::-webkit-scrollbar-thumb{background:var(--panel-border);border-radius:8px;}
-@media (prefers-reduced-motion: reduce){*{animation-duration:0.01ms !important;transition-duration:0.01ms !important;}}
 
-/* ambient animated background */
-.bg-glow{position:fixed;inset:0;z-index:-1;overflow:hidden;}
-.bg-glow span{position:absolute;border-radius:50%;filter:blur(70px);opacity:0.18;animation:float 16s ease-in-out infinite;}
-.bg-glow span:nth-child(1){width:340px;height:340px;background:var(--gold);top:-80px;left:-60px;animation-duration:18s;}
-.bg-glow span:nth-child(2){width:260px;height:260px;background:var(--teal);bottom:-60px;right:-40px;animation-duration:22s;animation-delay:2s;}
-.bg-glow span:nth-child(3){width:200px;height:200px;background:#4a3f6b;top:40%;left:60%;animation-duration:20s;animation-delay:4s;}
-@keyframes float{0%,100%{transform:translate(0,0);}50%{transform:translate(30px,-25px);}}
-
-.bg-pieces{position:fixed;inset:0;z-index:-1;opacity:0.04;font-size:120px;pointer-events:none;overflow:hidden;}
-.bg-pieces span{position:absolute;animation:drift 30s linear infinite;}
-@keyframes drift{0%{transform:translateY(0) rotate(0deg);}100%{transform:translateY(-40px) rotate(8deg);}}
-
-/* glass panel base */
-.glass{background:var(--panel);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--panel-border);border-radius:var(--radius);}
-
-h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;}
-
-/* screens */
-.screen{display:none;animation:fadeIn 0.35s ease;}
-.screen.active{display:block;}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
-
-/* ===================== HOME ===================== */
-.home-header{padding:48px 20px 18px;text-align:center;}
-.home-header h1{font-size:clamp(28px,7vw,42px);background:linear-gradient(135deg,var(--gold-soft),var(--gold) 60%,#fff3d0);-webkit-background-clip:text;background-clip:text;color:transparent;}
-.home-header p{color:var(--text-dim);margin-top:8px;font-size:15px;}
-
-.piece-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;padding:8px 16px 24px;max-width:760px;margin:0 auto;}
-@media (min-width:640px){.piece-grid{grid-template-columns:repeat(3,1fr);}}
-
-.piece-card{position:relative;overflow:hidden;padding:20px 14px 16px;text-align:center;cursor:pointer;transition:transform 0.18s ease, border-color 0.18s ease;-webkit-user-select:none;user-select:none;}
-.piece-card:active{transform:scale(0.96);}
-.piece-card:hover{border-color:var(--gold);transform:translateY(-3px);}
-.piece-card .glyph{font-size:46px;line-height:1;display:block;margin-bottom:8px;filter:drop-shadow(0 0 14px rgba(212,175,55,0.35));}
-.piece-card .pname{font-family:var(--serif);font-size:17px;}
-.piece-card .pdesc{color:var(--text-dim);font-size:12px;margin-top:4px;min-height:28px;}
-.piece-card .pcount{margin-top:8px;font-size:11px;color:var(--gold-soft);letter-spacing:0.4px;}
-.piece-card .ripple{position:absolute;border-radius:50%;background:rgba(212,175,55,0.35);transform:scale(0);animation:rip 0.6s ease-out;pointer-events:none;}
-@keyframes rip{to{transform:scale(4);opacity:0;}}
-
-.section-label{padding:18px 20px 6px;font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:var(--text-dim);}
-.quick-row{display:flex;gap:10px;padding:0 16px 20px;overflow-x:auto;}
-.chip{flex:0 0 auto;padding:10px 16px;border-radius:999px;font-size:13px;color:var(--text);cursor:pointer;white-space:nowrap;}
-.chip:active{transform:scale(0.96);}
-.chip.active{border-color:var(--gold);color:var(--gold-soft);}
-
-/* ===================== BOTTOM NAV ===================== */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:50;display:flex;justify-content:space-around;padding:10px 8px calc(10px + env(safe-area-inset-bottom));background:rgba(11,14,20,0.85);backdrop-filter:blur(16px);border-top:1px solid var(--panel-border);}
-.nav-btn{background:none;border:none;color:var(--text-dim);font-family:var(--sans);font-size:11px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 14px;cursor:pointer;border-radius:10px;transition:color .15s;}
-.nav-btn .ic{font-size:19px;}
-.nav-btn.active{color:var(--gold);}
-
-/* ===================== TRAINER ===================== */
-.trainer-wrap{display:flex;flex-direction:column;max-width:1100px;margin:0 auto;padding:14px 12px 20px;gap:14px;}
-@media (min-width:880px){.trainer-wrap{flex-direction:row;align-items:flex-start;}}
-.board-col{flex:1;min-width:0;}
-.board-shell{max-width:560px;margin:0 auto;position:relative;}
-#board{width:100%;border-radius:10px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,0.5);}
-.board-arrows{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6;}
-.board-toolbar{display:flex;justify-content:space-between;align-items:center;padding:6px 2px 10px;max-width:560px;margin:0 auto;}
-.icon-btn{background:var(--panel);border:1px solid var(--panel-border);color:var(--text);width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;}
-.icon-btn:active{transform:scale(0.92);}
-.icon-btn:disabled{opacity:0.35;cursor:default;}
-.status-bar{max-width:560px;margin:0 auto 6px;text-align:center;min-height:24px;font-size:14px;font-weight:600;letter-spacing:0.2px;}
-.status-bar.correct{color:var(--green);}
-.status-bar.wrong{color:var(--red);}
-.status-bar.info{color:var(--gold-soft);}
-
-.action-row{display:flex;flex-wrap:wrap;gap:8px;max-width:560px;margin:10px auto 0;justify-content:center;}
-.btn{font-family:var(--sans);font-size:13px;font-weight:600;padding:11px 16px;border-radius:12px;border:1px solid var(--panel-border);background:var(--panel);color:var(--text);cursor:pointer;min-height:42px;}
-.btn:active{transform:scale(0.96);}
-.btn:disabled{opacity:0.35;cursor:default;transform:none;}
-.btn.primary{background:linear-gradient(135deg,var(--gold-soft),var(--gold));color:#1a1404;border:none;}
-.btn.danger{border-color:rgba(225,86,78,0.4);color:var(--red);}
-
-.nav-row{display:flex;gap:8px;max-width:560px;margin:8px auto 0;justify-content:center;}
-
-.side-panel{width:100%;max-width:340px;margin:0 auto;}
-@media (min-width:880px){.side-panel{width:320px;flex:0 0 320px;}}
-.info-card{padding:18px;margin-bottom:12px;}
-.info-card h3{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:10px;}
-.info-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);}
-.info-row:last-child{border-bottom:none;}
-.info-row .v{color:var(--gold-soft);font-weight:600;text-align:right;max-width:60%;}
-.theme-tag{display:inline-block;font-size:11px;padding:3px 9px;margin:3px 3px 0 0;border-radius:999px;background:rgba(212,175,55,0.12);color:var(--gold-soft);}
-
-.engine-compact-row{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--text-dim);padding:2px 0 8px;}
-.engine-compact-row strong{color:var(--gold-soft);font-weight:700;}
-#engineLiveDot.searching{color:var(--gold-soft);animation:enginePulse 1s ease-in-out infinite;}
-@keyframes enginePulse{0%,100%{opacity:0.4;}50%{opacity:1;}}
-.engine-toggle-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0 10px;border-top:1px solid rgba(255,255,255,0.05);}
-.engine-toggle-row .lbl{font-size:12.5px;}
-.engine-toggle-row .sub{font-size:10.5px;color:var(--text-dim);margin-top:1px;}
-.switch.small{width:38px;height:22px;}
-.switch.small .knob{width:16px;height:16px;top:3px;left:3px;}
-.switch.small.on .knob{left:19px;}
-
-.move-list{display:flex;flex-wrap:wrap;gap:4px 0;font-size:13px;max-height:120px;overflow-y:auto;line-height:1.9;}
-.move-list .mv{padding:2px 7px;border-radius:7px;cursor:pointer;color:var(--text-dim);}
-.move-list .mv:hover{background:rgba(255,255,255,0.06);}
-.move-list .mv.current{background:rgba(212,175,55,0.18);color:var(--gold-soft);font-weight:700;}
-.move-list .mnum{color:var(--text-dim);font-size:11px;padding-right:2px;}
-.mini-actions{display:flex;gap:8px;margin-top:10px;}
-.mini-actions .btn{flex:1;padding:8px 6px;font-size:12px;min-height:34px;}
-
-.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:14px;color:var(--text-dim);}
-.spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--panel-border);border-top-color:var(--gold);animation:spin 0.8s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg);}}
-
-/* board square highlight animations */
-.sq-correct{box-shadow:inset 0 0 0 9999px rgba(95,191,110,0.45)!important;}
-.sq-wrong{animation:shake 0.4s;}
-@keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}}
-.sq-hint{box-shadow:inset 0 0 0 9999px rgba(212,175,55,0.5)!important;}
-
-/* legal-move affordances shown the instant a piece is selected */
-.sq-selected{box-shadow:inset 0 0 0 9999px rgba(212,175,55,0.32)!important;}
-.sq-legal,.sq-legal-capture{position:relative;}
-.sq-legal::after{content:'';position:absolute;top:50%;left:50%;width:26%;height:26%;border-radius:50%;background:rgba(20,18,14,0.32);transform:translate(-50%,-50%);pointer-events:none;}
-.sq-legal-capture::after{content:'';position:absolute;inset:6%;border-radius:50%;border:4px solid rgba(20,18,14,0.38);background:transparent;pointer-events:none;}
-
-/* ===================== STATS ===================== */
-.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:14px 16px;max-width:760px;margin:0 auto;}
-@media (min-width:640px){.stats-grid{grid-template-columns:repeat(4,1fr);}}
-.stat-card{padding:16px;text-align:center;}
-.stat-card .big{font-family:var(--serif);font-size:26px;color:var(--gold-soft);}
-.stat-card .lbl{font-size:11px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:0.6px;}
-.piece-stats{max-width:760px;margin:0 auto;padding:0 16px 24px;}
-.piece-stat-row{display:flex;align-items:center;gap:10px;padding:10px 14px;margin-bottom:8px;}
-.piece-stat-row .pg{font-size:22px;width:30px;}
-.bar-track{flex:1;height:8px;border-radius:6px;background:rgba(255,255,255,0.07);overflow:hidden;}
-.bar-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-soft));}
-.piece-stat-row .pct{font-size:12px;color:var(--text-dim);width:42px;text-align:right;}
-
-/* ===================== SETTINGS / ABOUT ===================== */
-.simple-screen{max-width:600px;margin:0 auto;padding:16px;}
-.settings-row{display:flex;justify-content:space-between;align-items:center;padding:16px;margin-bottom:10px;}
-.settings-row .lbl{font-size:14px;}
-.settings-row .sub{font-size:11px;color:var(--text-dim);margin-top:2px;}
-.switch{position:relative;width:46px;height:26px;border-radius:999px;background:rgba(255,255,255,0.12);cursor:pointer;}
-.switch.on{background:var(--gold);}
-.switch .knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .18s;}
-.switch.on .knob{left:23px;}
-.select-pill{background:rgba(255,255,255,0.07);border:1px solid var(--panel-border);color:var(--text);border-radius:10px;padding:8px 10px;font-size:13px;}
-.color-dot{width:22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,0.2);cursor:pointer;}
-.color-row{display:flex;gap:8px;}
-
-.about-card{padding:22px;line-height:1.6;font-size:14px;color:var(--text-dim);}
-.about-card h3{color:var(--text);margin-bottom:8px;}
-
-.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(20,24,33,0.95);border:1px solid var(--panel-border);padding:10px 18px;border-radius:12px;font-size:13px;z-index:80;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
-
-.topbar{display:flex;align-items:center;gap:10px;padding:18px 16px 4px;max-width:760px;margin:0 auto;}
-.topbar h2{font-size:22px;}
-.back-btn{background:none;border:none;color:var(--gold);font-size:22px;cursor:pointer;padding:4px 8px;}
-
-.panel-hidden{display:none!important;}
-
-.hidden{display:none!important;}
-body{
-  position:fixed;
-  inset:0;
-  overflow:hidden;
-  padding-bottom:78px;
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
-     /*==========================================================
-  DESKTOP - TRUE RESPONSIVE LAYOUT
-==========================================================*/
 
-@media (min-width:900px){
-
-    body{
-        padding-bottom:0;
-    }
-
-    /* Remove mobile header */
-    #screen-trainer .topbar{
-        display:none;
-    }
-
-    /* Main layout */
-    .trainer-wrap{
-
-        display:grid;
-
-        grid-template-columns:
-            minmax(0,1fr)
-            320px;
-
-        gap:42px;
-
-        align-items:center;
-
-        justify-content:center;
-
-        width:100%;
-
-        height:100vh;
-
-        padding:24px 60px 24px 210px;
-
-        box-sizing:border-box;
-
-    }
-
-    .board-col{
-
-        display:flex;
-
-        flex-direction:column;
-
-        align-items:center;
-
-        justify-content:center;
-
-    }
-
-    /*
-        The magic.
-
-        Board size is limited BOTH by viewport height
-        and by remaining width.
-
-        It will NEVER overflow.
-    */
-
-    .board-shell{
-
-        width:min(
-
-            calc(100vh - 120px),
-
-            calc(100vw - 650px)
-
-        );
-
-        max-width:none;
-
-        margin:0;
-
-    }
-
-    #board{
-
-        width:100%;
-
-    }
-
-    .board-toolbar,
-    .status-bar,
-    .nav-row,
-    .action-row{
-
-        width:100%;
-
-        max-width:none;
-
-    }
-
-    .side-panel{
-
-        width:320px;
-
-        max-width:320px;
-
-        margin:0;
-
-        align-self:center;
-
-    }
-
-    /* Desktop navigation */
-
-    .bottom-nav{
-
-        position:fixed;
-
-        left:28px;
-
-        top:50%;
-
-        transform:translateY(-50%);
-
-        right:auto;
-
-        bottom:auto;
-
-        width:150px;
-
-        display:flex;
-
-        flex-direction:column;
-
-        gap:6px;
-
-        padding:8px;
-
-        border-radius:16px;
-
-        background:rgba(12,15,22,.65);
-
-        backdrop-filter:blur(22px);
-
-        border:1px solid rgba(255,255,255,.06);
-
-        box-shadow:0 12px 36px rgba(0,0,0,.25);
-
-        z-index:100;
-
-    }
-
-    .nav-btn{
-
-        flex-direction:row;
-
-        justify-content:flex-start;
-
-        gap:12px;
-
-        padding:10px 14px;
-
-        border-radius:10px;
-
-        font-size:13px;
-
-    }
-
-    .nav-btn .ic{
-
-        width:18px;
-
-        text-align:center;
-
-        font-size:18px;
-
-    }
-
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  overflow-x: hidden;
 }
-/* ===========================================
-   Ultra-compact Stockfish box (mobile only)
-   =========================================== */
 
-@media (max-width:700px){
-  /* Force block layout and allocate right-side padding for the toggle button */
-  .side-panel .info-card:has(#toggleAnalysis){
-      display: block !important;
-      padding: 8px 56px 8px 12px !important;
-      margin-bottom: 8px;
-      position: relative;
+body {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  padding-bottom: 78px;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--panel-border);
+  border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================
+   BACKGROUND EFFECTS & UTILITIES
+   ============================================================ */
+.bg-glow {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+.bg-glow span {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.18;
+  animation: float 16s ease-in-out infinite;
+}
+.bg-glow span:nth-child(1) {
+  width: 340px;
+  height: 340px;
+  background: var(--gold);
+  top: -80px;
+  left: -60px;
+  animation-duration: 18s;
+}
+.bg-glow span:nth-child(2) {
+  width: 260px;
+  height: 260px;
+  background: var(--teal);
+  bottom: -60px;
+  right: -40px;
+  animation-duration: 22s;
+  animation-delay: 2s;
+}
+.bg-glow span:nth-child(3) {
+  width: 200px;
+  height: 200px;
+  background: #4a3f6b;
+  top: 40%;
+  left: 60%;
+  animation-duration: 20s;
+  animation-delay: 4s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(30px, -25px); }
+}
+
+.bg-pieces {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.04;
+  font-size: 120px;
+  pointer-events: none;
+  overflow: hidden;
+}
+.bg-pieces span {
+  position: absolute;
+  animation: drift 30s linear infinite;
+}
+
+@keyframes drift {
+  0% { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(-40px) rotate(8deg); }
+}
+
+.glass {
+  background: var(--panel);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+}
+
+h1, h2, h3 {
+  font-family: var(--serif);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  margin: 0;
+}
+
+.hidden { display: none !important; }
+.panel-hidden { display: none !important; }
+
+/* ============================================================
+   SCREENS BASE & LAYOUTS
+   ============================================================ */
+.screen {
+  display: none;
+  animation: fadeIn 0.35s ease;
+  height: 100%;
+  overflow-y: auto;
+}
+.screen.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 16px 4px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+.topbar h2 { font-size: 22px; }
+
+.back-btn {
+  background: none;
+  border: none;
+  color: var(--gold);
+  font-size: 22px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+/* ============================================================
+   HOME SCREEN COMPONENTS
+   ============================================================ */
+.home-header {
+  padding: 48px 20px 18px;
+  text-align: center;
+}
+.home-header h1 {
+  font-size: clamp(28px, 7vw, 42px);
+  background: linear-gradient(135deg, var(--gold-soft), var(--gold) 60%, #fff3d0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.home-header p {
+  color: var(--text-dim);
+  margin-top: 8px;
+  font-size: 15px;
+}
+
+.piece-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  padding: 8px 16px 24px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+@media (min-width: 640px) {
+  .piece-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.piece-card {
+  position: relative;
+  overflow: hidden;
+  padding: 20px 14px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.piece-card:active { transform: scale(0.96); }
+.piece-card:hover { border-color: var(--gold); transform: translateY(-3px); }
+.piece-card .glyph {
+  font-size: 46px;
+  line-height: 1;
+  display: block;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 0 14px rgba(212, 175, 55, 0.35));
+}
+.piece-card .pname { font-size: 17px; font-family: var(--serif); }
+.piece-card .pdesc { color: var(--text-dim); font-size: 12px; margin-top: 4px; min-height: 28px; }
+.piece-card .pcount { margin-top: 8px; font-size: 11px; color: var(--gold-soft); letter-spacing: 0.4px; }
+.piece-card .ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(212, 175, 55, 0.35);
+  transform: scale(0);
+  animation: rip 0.6s ease-out;
+  pointer-events: none;
+}
+
+@keyframes rip { to { transform: scale(4); opacity: 0; } }
+
+.section-label {
+  padding: 18px 20px 6px;
+  font-size: 12px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.quick-row {
+  display: flex;
+  gap: 10px;
+  padding: 0 16px 20px;
+  overflow-x: auto;
+}
+.chip {
+  flex: 0 0 auto;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.chip:active { transform: scale(0.96); }
+.chip.active { border-color: var(--gold); color: var(--gold-soft); }
+
+/* ============================================================
+   TRAINER INTERFACE (Mobile First defaults)
+   ============================================================ */
+.trainer-wrap {
+  display: flex;
+  flex-direction: column;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 14px 12px 20px;
+  gap: 14px;
+}
+
+.board-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.board-shell {
+  max-width: 560px;
+  margin: 0 auto;
+  position: relative;
+}
+
+#board {
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+}
+
+.board-arrows {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.board-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 2px 10px;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.icon-btn {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+}
+.icon-btn:active { transform: scale(0.92); }
+.icon-btn:disabled { opacity: 0.35; cursor: default; }
+
+.status-bar {
+  max-width: 560px;
+  margin: 0 auto 6px;
+  text-align: center;
+  min-height: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+.status-bar.correct { color: var(--green); }
+.status-bar.wrong { color: var(--red); }
+.status-bar.info { color: var(--gold-soft); }
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 560px;
+  margin: 10px auto 0;
+  justify-content: center;
+}
+
+.btn {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 11px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  min-height: 42px;
+}
+.btn:active { transform: scale(0.96); }
+.btn:disabled { opacity: 0.35; cursor: default; transform: none; }
+.btn.primary { background: linear-gradient(135deg, var(--gold-soft), var(--gold)); color: #1a1404; border: none; }
+.btn.danger { border-color: rgba(225, 86, 78, 0.4); color: var(--red); }
+
+.nav-row {
+  display: flex;
+  gap: 8px;
+  max-width: 560px;
+  margin: 8px auto 0;
+  justify-content: center;
+}
+
+/* ============================================================
+   SIDE PANEL & STOCKFISH WIDGETS
+   ============================================================ */
+.side-panel {
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+}
+
+.info-card {
+  padding: 18px;
+  margin-bottom: 12px;
+}
+.info-card h3 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.info-row:last-child { border-bottom: none; }
+.info-row .v { color: var(--gold-soft); font-weight: 600; text-align: right; max-width: 60%; }
+
+.theme-tag {
+  display: inline-block;
+  font-size: 11px;
+  padding: 3px 9px;
+  margin: 3px 3px 0 0;
+  border-radius: 999px;
+  background: rgba(212, 175, 55, 0.12);
+  color: var(--gold-soft);
+}
+
+.engine-compact-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 2px 0 8px;
+}
+.engine-compact-row strong { color: var(--gold-soft); font-weight: 700; }
+
+#engineLiveDot.searching {
+  color: var(--gold-soft);
+  animation: enginePulse 1s ease-in-out infinite;
+}
+@keyframes enginePulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+.engine-toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.engine-toggle-row .lbl { font-size: 12.5px; }
+.engine-toggle-row .sub { font-size: 10.5px; color: var(--text-dim); margin-top: 1px; }
+
+.switch {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+}
+.switch.on { background: var(--gold); }
+.switch .knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.18s;
+}
+.switch.on .knob { left: 23px; }
+
+.switch.small { width: 38px; height: 22px; }
+.switch.small .knob { width: 16px; height: 16px; top: 3px; left: 3px; }
+.switch.small.on .knob { left: 19px; }
+
+.move-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 0;
+  font-size: 13px;
+  max-height: 120px;
+  overflow-y: auto;
+  line-height: 1.9;
+}
+.move-list .mv { padding: 2px 7px; border-radius: 7px; cursor: pointer; color: var(--text-dim); }
+.move-list .mv:hover { background: rgba(255, 255, 255, 0.06); }
+.move-list .mv.current { background: rgba(212, 175, 55, 0.18); color: var(--gold-soft); font-weight: 700; }
+.move-list .mnum { color: var(--text-dim); font-size: 11px; padding-right: 2px; }
+
+.mini-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.mini-actions .btn { flex: 1; padding: 8px 6px; font-size: 12px; min-height: 34px; }
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 14px;
+  color: var(--text-dim);
+}
+.spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid var(--panel-border);
+  border-top-color: var(--gold);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   BOARD INTERACTION HIGHLIGHTS
+   ============================================================ */
+.sq-correct { box-shadow: inset 0 0 0 9999px rgba(95, 191, 110, 0.45) !important; }
+.sq-wrong { animation: shake 0.4s; }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+.sq-hint { box-shadow: inset 0 0 0 9999px rgba(212, 175, 55, 0.5) !important; }
+.sq-selected { box-shadow: inset 0 0 0 9999px rgba(212, 175, 55, 0.32) !important; }
+.sq-legal, .sq-legal-capture { position: relative; }
+.sq-legal::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 26%;
+  height: 26%;
+  border-radius: 50%;
+  background: rgba(20, 18, 14, 0.32);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.sq-legal-capture::after {
+  content: '';
+  position: absolute;
+  inset: 6%;
+  border-radius: 50%;
+  border: 4px solid rgba(20, 18, 14, 0.38);
+  background: transparent;
+  pointer-events: none;
+}
+
+/* ============================================================
+   STATS, SETTINGS & AUXILIARY SCREENS
+   ============================================================ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 14px 16px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+@media (min-width: 640px) {
+  .stats-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+.stat-card { padding: 16px; text-align: center; }
+.stat-card .big { font-family: var(--serif); font-size: 26px; color: var(--gold-soft); }
+.stat-card .lbl { font-size: 11px; color: var(--text-dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.6px; }
+
+.piece-stats { max-width: 760px; margin: 0 auto; padding: 0 16px 24px; }
+.piece-stat-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: 8px; }
+.piece-stat-row .pg { font-size: 22px; width: 30px; }
+.bar-track { flex: 1; height: 8px; border-radius: 6px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
+.bar-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-soft)); }
+.piece-stat-row .pct { font-size: 12px; color: var(--text-dim); width: 42px; text-align: right; }
+
+.simple-screen { max-width: 600px; margin: 0 auto; padding: 16px; }
+.settings-row glass { display: flex; justify-content: space-between; align-items: center; padding: 16px; margin-bottom: 10px; }
+.settings-row .lbl { font-size: 14px; }
+.settings-row .sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+.select-pill {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.color-row { display: flex; gap: 8px; }
+.color-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.2); cursor: pointer; }
+
+.about-card { padding: 22px; line-height: 1.6; font-size: 14px; color: var(--text-dim); }
+.about-card h3 { color: var(--text); margin-bottom: 8px; }
+
+.toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 24, 33, 0.95);
+  border: 1px solid var(--panel-border);
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-size: 13px;
+  z-index: 80;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: space-around;
+  padding: 10px 8px calc(10px + env(safe-area-inset-bottom));
+  background: rgba(11, 14, 20, 0.85);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--panel-border);
+}
+.nav-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-family: var(--sans);
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 14px;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: color 0.15s;
+}
+.nav-btn .ic { font-size: 19px; }
+.nav-btn.active { color: var(--gold); }
+
+/* ============================================================
+   ULTRA-COMPACT STOCKFISH MOBILE BOX
+   ============================================================ */
+@media (max-width: 700px) {
+  .side-panel .info-card:has(#toggleAnalysis) {
+    display: block !important;
+    padding: 8px 56px 8px 12px !important;
+    margin-bottom: 8px;
+    position: relative;
+  }
+  .side-panel .info-card:has(#toggleAnalysis) h3 {
+    display: inline-block !important;
+    font-size: 11px;
+    margin: 0 10px 0 0 !important;
+    letter-spacing: 0.5px;
+    vertical-align: middle;
+  }
+  .side-panel .info-card:has(#toggleAnalysis) .engine-compact-row {
+    display: inline-flex !important;
+    gap: 8px !important;
+    font-size: 11px;
+    padding: 0 !important;
+    margin: 0 !important;
+    vertical-align: middle;
+  }
+  .side-panel .info-card:has(#toggleAnalysis) .mini-actions {
+    margin-top: 6px !important;
+    display: block !important;
+  }
+  .side-panel .info-card:has(#toggleAnalysis) .mini-actions .btn {
+    min-height: 28px !important;
+    padding: 4px 12px !important;
+    font-size: 11px;
+    border-radius: 8px;
+    width: auto;
+  }
+  .side-panel .info-card:has(#toggleAnalysis) .engine-toggle-row {
+    position: absolute !important;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: auto !important;
+    background: none !important;
+  }
+  .side-panel .info-card:has(#toggleAnalysis) .engine-toggle-row > div:not(#toggleAnalysis) {
+    display: none !important;
+  }
+  .side-panel .info-card:has(#toggleAnalysis) #toggleAnalysis {
+    transform: scale(0.82);
+    transform-origin: right center;
+    margin: 0 !important;
+  }
+}
+
+/* ============================================================
+   UNIFIED DESKTOP IMPLEMENTATION (900px and up)
+   ============================================================ */
+@media (min-width: 900px) {
+  body {
+    position: relative;
+    padding-bottom: 0;
+    overflow: auto;
   }
 
-  /* LINE 1: Title and metrics sit inline next to each other */
-  .side-panel .info-card:has(#toggleAnalysis) h3{
-      display: inline-block !important;
-      font-size: 11px;
-      margin: 0 10px 0 0 !important;
-      letter-spacing: 0.5px;
-      vertical-align: middle;
-  }
-  .side-panel .info-card:has(#toggleAnalysis) .engine-compact-row{
-      display: inline-flex !important;
-      gap: 8px !important;
-      font-size: 11px;
-      padding: 0 !important;
-      margin: 0 !important;
-      vertical-align: middle;
+  .screen {
+    overflow-y: visible;
   }
 
-  /* LINE 2: Action button steps down nicely */
-  .side-panel .info-card:has(#toggleAnalysis) .mini-actions{
-      margin-top: 6px !important;
-      display: block !important;
-  }
-  .side-panel .info-card:has(#toggleAnalysis) .mini-actions .btn{
-      min-height: 28px !important;
-      padding: 4px 12px !important;
-      font-size: 11px;
-      border-radius: 8px;
-      width: auto;
+  #screen-trainer .topbar {
+    display: none;
   }
 
-  /* TOGGLE SWITCH: Absolute positioned on the center-right of the box */
-  .side-panel .info-card:has(#toggleAnalysis) .engine-toggle-row{
-      position: absolute !important;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      border: none !important;
-      padding: 0 !important;
-      margin: 0 !important;
-      min-height: auto !important;
-      background: none !important;
+  /* Core Layout Grid System */
+  .trainer-wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 42px;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100vh;
+    padding: 24px 60px 24px 210px;
+    box-sizing: border-box;
   }
-  /* Hide the verbose text elements so only the clean toggle button renders */
-  .side-panel .info-card:has(#toggleAnalysis) .engine-toggle-row > div:not(#toggleAnalysis){
-      display: none !important;
+
+  /* Mid-stage Control Distribution Subgrid */
+  .board-col {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 260px;
+    grid-template-rows: auto auto auto;
+    gap: 14px 28px;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
   }
-  .side-panel .info-card:has(#toggleAnalysis) #toggleAnalysis{
-      transform: scale(0.82);
-      transform-origin: right center;
-      margin: 0 !important;
+
+  /* Safe Aspect Ratio Chessboard Zone Container */
+  .board-shell {
+    grid-column: 1;
+    grid-row: 1 / span 3;
+    justify-self: center;
+    width: min(calc(100vh - 60px), calc(100vw - 930px));
+    max-width: none;
+    margin: 0;
+  }
+
+  /* Control Row Stacking Framework */
+  .board-toolbar {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  .nav-row {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: center;
+    width: 100%;
+    max-width: none;
+    margin: 0 !important;
+  }
+
+  .action-row {
+    grid-column: 2;
+    grid-row: 3;
+    align-self: start;
+    width: 100%;
+    max-width: none;
+    margin: 0 !important;
+  }
+
+  /* Right Side Workspace Wrapper */
+  .side-panel {
+    width: 320px;
+    max-width: 320px;
+    margin: 0;
+    align-self: center;
+  }
+
+  /* Desktop Navigation Strip */
+  .bottom-nav {
+    position: fixed;
+    left: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    right: auto;
+    bottom: auto;
+    width: 150px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    border-radius: 16px;
+    background: rgba(12, 15, 22, 0.65);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
+    z-index: 100;
+  }
+
+  .nav-btn {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    width: 100%;
+  }
+
+  .nav-btn .ic {
+    width: 18px;
+    text-align: center;
+    font-size: 18px;
   }
 }
 </style>
@@ -652,7 +1049,7 @@ body{
     <div class="about-card glass">
       <h3>Chess Piece Trainer</h3>
       <p>A focused tactics trainer that lets you drill puzzles by the piece that delivers the winning move — pawns, knights, bishops, rooks, queens, and kings each have their own pattern language. Pick a piece, solve the first move, and watch the combination play out.</p>
-      <p>Puzzles are streamed live from a Lichess-derived puzzle database, organized by piece and loaded one at a time to keep the app fast and light — nothing is ever preloaded in bulk.</p>
+      <p>Puzzles are fetched live from a Cloudflare Worker powered by a Turso SQL database, query-filtered instantly on the fly.</p>
       <p>Built with vanilla HTML, CSS and JavaScript, plus chess.js and chessboard.js. No frameworks, no build step — runs entirely on GitHub Pages.</p>
       <p style="margin-top:10px;">Keyboard shortcuts: <strong>←</strong> / <strong>→</strong> step through moves, <strong>H</strong> hint, <strong>N</strong> next puzzle.</p>
     </div>
@@ -678,7 +1075,7 @@ body{
    CONFIGURATION
    ============================================================ */
 const CONFIG = {
-  REPO_BASE: 'https://raw.githubusercontent.com/andrewveda/piece-trainer/main/output',
+  API_BASE: 'https://knight-trainer.andrewveda.workers.dev',
   CACHE_LIMIT: 24,
   AUTO_MOVE_DELAY: 480,
   AUTO_ADVANCE_DELAY: 1400,
@@ -710,10 +1107,8 @@ const state = {
   solving: false,          // true while it is the user's turn to find the solving move
   moveCursor: 0,            // index into puzzle.moves the live game has reached
   fenHistory: [],           // fen snapshot after each ply played (index 0 = puzzle start fen)
-  sanHistory: [],           // SAN for each ply, sanHistory[i] produced fenHistory[i+1] — tracked
-                             // by us rather than read from chess.js, since chess.js loses move
-                             // history whenever we reload a FEN mid-game (needed for branching).
-  viewIndex: 0,             // which fen in fenHistory is currently shown on the board (review mode)
+  sanHistory: [],           // SAN history tracking across manual/branching modes
+  viewIndex: 0,             // which FEN index is displayed
   boardOrientation: 'white',
   puzzleStartTime: null,
   sessionSolved: 0,
@@ -723,12 +1118,12 @@ const state = {
   stats: loadStats(),
   favorites: loadJSON('cpt_favorites', []),
   recents: loadJSON('cpt_recents', []),
-  selectedSquare: null,     // square clicked to start a click-to-move (vs. drag)
-  legalTargets: [],         // legal destination squares for the currently selected piece
-  sf: null,                 // Stockfish Web Worker instance (lazy-created)
-  sfMode: null,             // 'analyze' | 'continue' | null — what the pending engine search is for
-  sfBestLine: {},           // last parsed "info" line from the engine
-  analysisMode: false,      // when true, any legal move can be played (not just the puzzle line)
+  selectedSquare: null,     // square clicked to start a click-to-move sequence
+  legalTargets: [],         // legal destination targets for selections
+  sf: null,                 // Stockfish engine worker instance
+  sfMode: null,             // current stockfish action tracking string
+  sfBestLine: {},           // engine performance line readout structure
+  analysisMode: false,      // toggles free legal board play options
 };
 
 /* ============================================================
@@ -761,7 +1156,7 @@ function loadStats(){
 function saveStats(){ saveJSON('cpt_stats', state.stats); }
 
 /* ============================================================
-   NETWORKING — lazy fetch with small in-memory cache
+   NETWORKING — Native Async API Queries via Cloudflare Worker
    ============================================================ */
 async function fetchJSONCached(url){
   if(state.cache.has(url)) return state.cache.get(url);
@@ -776,35 +1171,20 @@ async function fetchJSONCached(url){
   return data;
 }
 
-async function getPieceFileList(piece){
-  if(state.pieceIndexCache.has(piece)) return state.pieceIndexCache.get(piece);
-  const idx = await fetchJSONCached(`${CONFIG.REPO_BASE}/${piece}/index.json`);
-  const list = Array.isArray(idx) ? idx : (idx.files || idx[piece] || []);
-  state.pieceIndexCache.set(piece, list);
-  return list;
+async function getPieceMeta(piece){
+  if(state.pieceIndexCache.has(piece))
+    return state.pieceIndexCache.get(piece);
+
+  const data = await fetchJSONCached(`${CONFIG.API_BASE}/meta?piece=${piece}`);
+  state.pieceIndexCache.set(piece, data);
+  return data;
 }
 
 async function getRandomPuzzleForPiece(piece){
-  const files = await getPieceFileList(piece);
-  if(!files.length) throw new Error('No puzzle files found for ' + piece);
-  // try a handful of random files so a difficulty filter has a chance of matching
-  const tried = new Set();
-  for(let attempt=0; attempt<6 && tried.size < files.length; attempt++){
-    const file = files[Math.floor(Math.random() * files.length)];
-    if(tried.has(file)) continue;
-    tried.add(file);
-    const url = `${CONFIG.REPO_BASE}/${piece}/${file}`;
-    const puzzles = await fetchJSONCached(url);
-    const arr = Array.isArray(puzzles) ? puzzles : (puzzles.puzzles || []);
-    if(!arr.length) continue;
-    const candidates = arr.filter(p=>{
-      const r = typeof p.rating === 'number' ? p.rating : 0;
-      return r >= state.difficultyMin && r <= state.difficultyMax;
-    });
-    const pool = candidates.length ? candidates : arr;
-    return pool[Math.floor(Math.random() * pool.length)];
-  }
-  throw new Error('No puzzles found matching the current filters.');
+  const url = `${CONFIG.API_BASE}/puzzle?piece=${piece}&min=${state.difficultyMin}&max=${state.difficultyMax}`;
+  const puzzle = await fetchJSONCached(url);
+  if(!puzzle || !puzzle.fen) throw new Error('No puzzles found matching constraints.');
+  return puzzle;
 }
 
 /* ============================================================
@@ -892,9 +1272,10 @@ function renderPieceGrid(){
     `;
     card.addEventListener('click', (e)=>{ ripple(card,e); startTraining(p.key); });
     grid.appendChild(card);
-    getPieceFileList(p.key).then(files=>{
-      document.getElementById('count-' + p.key).textContent = files.length + ' files';
-    }).catch(()=>{ document.getElementById('count-' + p.key).textContent = 'offline'; });
+    getPieceMeta(p.key).then(data=>{
+      document.getElementById('count-' + p.key).textContent =
+          (data.totalPuzzles || 0).toLocaleString() + " puzzles";
+    }).catch(()=>{ document.getElementById('count-' + p.key).textContent = 'online'; });
   });
 }
 function ripple(el, evt){
@@ -940,26 +1321,36 @@ document.getElementById('chipRecent').addEventListener('click', ()=>{
    ============================================================ */
 function initBoardIfNeeded(){
   if(state.board) return;
+  
   state.board = Chessboard('board', {
     draggable: true,
     position: 'start',
     pieceTheme: pieceThemeUrl,
     showNotation: state.settings.coordinates,
-    onDragStart, onDrop, onSnapEnd
+    onDragStart, 
+    onDrop, 
+    onSnapEnd
   });
+  
   if(!state.boardResizeWired){
-    window.addEventListener('resize', ()=>state.board && state.board.resize());
+    window.addEventListener('resize', ()=> {
+      if(state.board) {
+        state.board.resize();
+        applyBoardColor();
+      }
+    });
     state.boardResizeWired = true;
   }
-  // click-to-move: delegated so it survives rebuildBoard() recreating the squares
-  $('#board').off('click.cpt').on('click.cpt', '.square-55d63', function(){
-    const cls = Array.from(this.classList).find(c=>/^square-[a-h][1-8]$/.test(c));
-    if(cls) onBoardSquareClick(cls.replace('square-',''));
-  });
+
+  $('#board')
+    .off('mousedown.cpt touchstart.cpt')
+    .on('mousedown.cpt touchstart.cpt', '[data-square]', function(e) {
+      if (e.type === 'touchstart') e.stopPropagation();
+      const square = $(this).attr('data-square');
+      if (square) onBoardSquareClick(square);
+    });
 }
 function rebuildBoard(){
-  // Recreate the board (needed when showNotation / pieceTheme options change,
-  // since chessboard.js 1.0.0 has no setter for those after construction).
   if(state.board && state.board.destroy) state.board.destroy();
   state.board = null;
   initBoardIfNeeded();
@@ -977,7 +1368,7 @@ async function startTraining(pieceKey, presetPuzzle){
   document.getElementById('trainerTitle').textContent = capitalize(pieceKey) + ' Trainer';
   setStatus('Fetching puzzle…', 'info');
   document.getElementById('loadingOverlay').classList.remove('hidden');
-  setDragEnabled(false); // never allow drags while a fetch is in flight
+  setDragEnabled(false);
   try{
     const puzzle = presetPuzzle || await getRandomPuzzleForPiece(pieceKey);
     loadPuzzle(pieceKey, puzzle);
@@ -991,31 +1382,23 @@ async function startTraining(pieceKey, presetPuzzle){
 
 async function startDailyPuzzle(){
   const today = new Date().toISOString().slice(0,10);
-  const seedPiece = PIECES[hashStr(today) % PIECES.length].key;
   showScreen('trainer');
   initBoardIfNeeded();
   setStatus('Fetching daily puzzle…', 'info');
   document.getElementById('loadingOverlay').classList.remove('hidden');
   setDragEnabled(false);
   try{
-    const files = await getPieceFileList(seedPiece);
-    const file = files[hashStr(today + seedPiece) % files.length];
-    const data = await fetchJSONCached(`${CONFIG.REPO_BASE}/${seedPiece}/${file}`);
-    const arr = Array.isArray(data) ? data : (data.puzzles || []);
-    const puzzle = arr[hashStr(today + file) % arr.length];
+    const url = `${CONFIG.API_BASE}/daily?date=${today}`;
+    const puzzle = await fetchJSONCached(url);
+    if(!puzzle || !puzzle.fen) throw new Error('No daily puzzle package returned.');
     document.getElementById('trainerTitle').textContent = 'Daily Puzzle';
-    loadPuzzle(seedPiece, puzzle);
+    loadPuzzle(puzzle.piece || 'pawn', puzzle);
   }catch(err){
     setStatus('Could not load daily puzzle.', 'wrong');
     console.error(err);
   }finally{
     document.getElementById('loadingOverlay').classList.add('hidden');
   }
-}
-function hashStr(s){
-  let h = 0;
-  for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) >>> 0; }
-  return h;
 }
 
 function loadPuzzle(pieceKey, puzzle){
@@ -1045,9 +1428,8 @@ function loadPuzzle(pieceKey, puzzle){
   updateMoveDisplay();
   toast('Watch the setup move…');
 
-  // moves[0] is the opponent's "setup" move per Lichess puzzle convention.
   setTimeout(()=>{
-    if(state.currentPuzzle !== puzzle) return; // a newer puzzle has since been loaded
+    if(state.currentPuzzle !== puzzle) return;
     applyMoveToBoard(puzzle.moves[0], true);
     state.moveCursor = 1;
     state.solving = true;
@@ -1073,12 +1455,6 @@ function updateMoveCounter(){
   document.getElementById('infoMoveCount').textContent = total ? `${Math.min(state.moveCursor,total)} / ${total}` : '—';
 }
 
-/**
- * Applies a UCI move to the *live* chess.js game (state.chess) and pushes a
- * fen snapshot onto fenHistory. If `showOnBoard` is true (default) and we are
- * currently viewing the latest position, the board updates immediately;
- * otherwise the board stays put so we don't yank the user out of review mode.
- */
 function applyMoveToBoard(uci, showOnBoard){
   const mv = parseUCI(uci);
   const result = state.chess.move(mv);
@@ -1098,13 +1474,6 @@ function applyMoveToBoard(uci, showOnBoard){
   return result;
 }
 
-/**
- * The bar between the flip and favorite buttons now always shows notation
- * (the move just played) instead of transient status text — transient
- * messages ("Correct!", "Not quite", etc.) go through toast() instead.
- * `flashClass` ('correct' | 'wrong' | 'info') briefly colors the notation
- * text, e.g. green right after a correct move, then it settles back to plain.
- */
 function updateMoveDisplay(flashClass){
   clearBoardArrows();
   const el = document.getElementById('statusBar');
@@ -1131,22 +1500,18 @@ function updateMoveDisplay(flashClass){
   }
 }
 function setStatus(msg, cls){
-  // Legacy call sites now just surface as a toast; the status bar itself is
-  // reserved for live notation (see updateMoveDisplay above).
   toast(msg);
 }
 
 function setDragEnabled(enabled){
-  // chessboard.js 1.0.0 has no direct draggable setter; we gate everything
-  // through state.solving inside onDragStart instead, this just mirrors intent.
   state.dragEnabled = enabled;
 }
 
 /* ============================================================
    LEGAL-MOVE HIGHLIGHTING + CLICK-TO-MOVE
    ============================================================ */
-function squareEl(square){
-  return document.querySelector(`#board .square-${square}`);
+function squareEl(square) {
+  return document.querySelector(`#board [data-square="${square}"]`);
 }
 function clearHighlights(){
   document.querySelectorAll('#board .sq-legal, #board .sq-legal-capture, #board .sq-selected')
@@ -1154,13 +1519,6 @@ function clearHighlights(){
   state.selectedSquare = null;
   state.legalTargets = [];
 }
-/**
- * Returns a fresh chess.js instance for whatever position is currently
- * displayed (state.viewIndex), independent of state.chess. This is what lets
- * analysis mode branch: playing a move works off the *displayed* position,
- * not just the tip of the line, and jumping around in review never mutates
- * the "live" game object.
- */
 function viewChess(){
   const fen = state.fenHistory[state.viewIndex];
   return fen ? new Chess(fen) : new Chess();
@@ -1181,7 +1539,7 @@ function highlightLegalMoves(square){
 function canSelect(square){
   if(!state.fenHistory.length || !state.dragEnabled) return false;
   if(state.analysisMode){
-    // any reviewed position is fair game — branching happens on move.
+    // Allow standard interactions globally during analysis states
   }else{
     if(state.viewIndex !== state.fenHistory.length - 1) return false;
     if(!(state.solving && state.currentPuzzle)) return false;
@@ -1194,25 +1552,47 @@ function canSelect(square){
 }
 function onBoardSquareClick(square){
   if(!state.fenHistory.length || !state.dragEnabled) return;
+
   if(!state.analysisMode){
     if(state.viewIndex !== state.fenHistory.length - 1) return;
     if(!(state.solving && state.currentPuzzle)) return;
   }
+
+  if (canSelect(square) && square !== state.selectedSquare) {
+    highlightLegalMoves(square);
+    return;
+  }
+
   if(state.selectedSquare){
-    if(square === state.selectedSquare){ clearHighlights(); return; }
-    if(state.legalTargets.includes(square)){
-      const source = state.selectedSquare;
+    if(square === state.selectedSquare){
       clearHighlights();
-      const outcome = state.analysisMode ? attemptFreeMove(source, square) : attemptSolvingMove(source, square);
-      if(outcome === 'accepted') state.board.position(state.chess.fen());
       return;
     }
+
+    if (state.legalTargets.includes(square)) {
+      const outcome = state.analysisMode
+        ? attemptFreeMove(state.selectedSquare, square)
+        : attemptSolvingMove(state.selectedSquare, square);
+
+      clearHighlights();
+      if(outcome === 'accepted' && state.board){
+        state.board.position(state.chess.fen());
+      }
+    } else {
+      if (canSelect(square)) {
+        highlightLegalMoves(square);
+      } else {
+        clearHighlights();
+      }
+    }
+    return;
   }
-  if(canSelect(square)) highlightLegalMoves(square);
-  else clearHighlights();
+
+  if(canSelect(square)){
+    highlightLegalMoves(square);
+  }
 }
 
-/* ---- puzzle-mode move validation: must match the puzzle's solution line ---- */
 function attemptSolvingMove(source, target){
   if(!state.dragEnabled || !state.solving) return 'rejected';
   if(!state.currentPuzzle || state.moveCursor >= state.currentPuzzle.moves.length) return 'rejected';
@@ -1230,20 +1610,17 @@ function attemptSolvingMove(source, target){
     return 'rejected';
   }
 
-  // Correct move. Resolve under-promotion choice if this move is a pawn promotion.
   const isPromotion = (state.chess.get(source)||{}).type === 'p' &&
                        (target[1] === '8' || target[1] === '1');
   let promotionPiece = expected.promotion || 'q';
   if(isPromotion && expected.promotion === 'q'){
-    // The puzzle data defaults unspecified promotions to queen; ask the user
-    // to confirm so under-promotion puzzles aren't silently mis-scored.
     const choice = window.prompt('Promote to (q, r, b, n):', 'q');
     if(choice && /^[qrbn]$/i.test(choice.trim())) promotionPiece = choice.trim().toLowerCase();
   }
 
   const moveObj = { from: source, to: target, promotion: promotionPiece };
   const result = state.chess.move(moveObj);
-  if(!result) return 'rejected'; // safety net: should not happen given checks above
+  if(!result) return 'rejected';
 
   state.fenHistory.push(state.chess.fen());
   state.sanHistory.push(result.san);
@@ -1269,15 +1646,6 @@ function attemptSolvingMove(source, target){
   return 'accepted';
 }
 
-/**
- * Analysis-mode move validation: any legal move for the side to move, played
- * from whatever position is currently displayed. Playing a move from a
- * reviewed (non-tip) position starts a new branch — everything beyond the
- * current view is discarded in favor of the new line, exactly like a normal
- * chess analysis board. Because state.chess is rebuilt fresh from FEN each
- * branch, we track SAN ourselves in sanHistory rather than relying on
- * chess.js's own move history (which chess.js forgets on reload-from-FEN).
- */
 function attemptFreeMove(source, target){
   const vc = viewChess();
   if(vc.game_over()) return 'rejected';
@@ -1301,9 +1669,8 @@ function attemptFreeMove(source, target){
   state.fenHistory.push(vc.fen());
   state.sanHistory.push(result.san);
   state.viewIndex = state.fenHistory.length - 1;
-  state.chess = vc; // this branch is now the tip
-  state.solving = false; // the board has now diverged from the puzzle's own line;
-                          // resuming puzzle solving requires a Reset
+  state.chess = vc;
+  state.solving = false;
 
   flashSquare(target, 'sq-correct');
   sfx.move();
@@ -1314,8 +1681,7 @@ function attemptFreeMove(source, target){
   return 'accepted';
 }
 
-/* ---- drag & drop handlers ---- */
-function onDragStart(source, piece){
+function onDragStart(source, piece, position, orientation){
   if(!canSelect(source)) return false;
   highlightLegalMoves(source);
   return true;
@@ -1324,13 +1690,9 @@ function onDragStart(source, piece){
 function onDrop(source, target){
   clearHighlights();
   const outcome = state.analysisMode ? attemptFreeMove(source, target) : attemptSolvingMove(source, target);
-  // chessboard.js expects 'snapback' to reject the drop, or undefined to accept
-  // and animate the piece into place itself (we resync via onSnapEnd either way).
   return outcome === 'accepted' ? undefined : 'snapback';
 }
 function onSnapEnd(){
-  // Always resync to whatever fen the live game (or current review index) holds,
-  // since chessboard.js's own internal position can drift from chess.js otherwise.
   const fen = state.fenHistory[state.viewIndex] || (state.chess && state.chess.fen());
   if(fen) state.board.position(fen, false);
 }
@@ -1426,7 +1788,7 @@ function renderMoveList(){
     const mv = document.createElement('span');
     mv.className = 'mv' + (i + 1 === state.viewIndex ? ' current' : '');
     mv.textContent = san;
-    mv.dataset.idx = i + 1; // index into fenHistory
+    mv.dataset.idx = i + 1;
     mv.addEventListener('click', ()=>jumpToFenIndex(i+1));
     el.appendChild(mv);
   });
@@ -1441,8 +1803,6 @@ function jumpToFenIndex(idx){
   renderMoveList();
   updateNavButtons();
   updateMoveDisplay();
-  // Disable dragging while reviewing a past position in puzzle mode (resuming
-  // play requires "latest"); analysis mode always allows moving from any point.
   setDragEnabled(state.analysisMode || (idx === state.fenHistory.length - 1 && state.solving));
 }
 function updateNavButtons(){
@@ -1504,7 +1864,7 @@ document.getElementById('btnNext').addEventListener('click', ()=>{
 document.getElementById('btnFlip').addEventListener('click', ()=>{
   state.board.flip();
   state.boardOrientation = state.boardOrientation === 'white' ? 'black' : 'white';
-  renderEnginePanel(); // re-project any active arrow onto the flipped orientation
+  renderEnginePanel();
 });
 document.getElementById('toggleAnalysis').addEventListener('click', ()=>{
   const el = document.getElementById('toggleAnalysis');
@@ -1540,19 +1900,11 @@ function updateFavoriteButton(){
 }
 
 /* ============================================================
-   STOCKFISH ENGINE — analysis + "continue with Stockfish"
-   ============================================================
-   Stockfish's worker script lives on a different origin (cdnjs), and
-   classic Web Workers can't be constructed directly from a cross-origin
-   URL. The standard workaround is a tiny same-origin blob that does
-   nothing but importScripts() the real engine — importScripts (unlike
-   `new Worker(url)`) is allowed to load cross-origin, same as a <script>
-   tag would be.
-*/
-/* ---- board arrow overlay: draws the engine's suggested move as an arrow ---- */
+   STOCKFISH ENGINE — analysis + worker bootstrapping
+   ============================================================ */
 function squareCenterPct(square){
-  const file = square.charCodeAt(0) - 97;   // a=0 ... h=7
-  const rank = parseInt(square[1], 10);      // 1-8
+  const file = square.charCodeAt(0) - 97;
+  const rank = parseInt(square[1], 10);
   let col = file, row = 8 - rank;
   if(state.boardOrientation === 'black'){ col = 7 - file; row = rank - 1; }
   return { x: (col + 0.5) / 8 * 100, y: (row + 0.5) / 8 * 100 };
@@ -1586,7 +1938,7 @@ function drawArrow(from, to, color){
   const p2 = squareCenterPct(to);
   const dx = p2.x - p1.x, dy = p2.y - p1.y;
   const len = Math.sqrt(dx*dx + dy*dy) || 1;
-  const shorten = 5.5; // pull the tip back so the arrowhead clears the piece glyph
+  const shorten = 5.5;
   const ex = p2.x - (dx/len) * shorten;
   const ey = p2.y - (dy/len) * shorten;
   const line = document.createElementNS(NS, 'line');
@@ -1661,7 +2013,6 @@ function renderEnginePanel(){
   if(line.mate != null){
     evalEl.textContent = '#' + line.mate;
   }else if(line.cp != null){
-    // UCI score is relative to the side to move; normalize to White's perspective.
     const turn = state.chess ? state.chess.turn() : 'w';
     const whiteCp = turn === 'w' ? line.cp : -line.cp;
     evalEl.textContent = (whiteCp >= 0 ? '+' : '') + (whiteCp / 100).toFixed(2);
@@ -1691,15 +2042,6 @@ function renderEnginePanel(){
   }
 }
 
-/**
- * Live analysis: only runs while Analysis Mode is on — the engine and its
- * board arrow are otherwise fully dormant, so puzzle-solving never has a
- * silent "answer" sitting one tap away. Once Analysis Mode is switched on,
- * the engine automatically re-evaluates whenever the displayed position
- * changes (debounced so rapid stepping through moves doesn't spam the
- * worker). It never interrupts an in-flight "Continue with Stockfish"
- * search, since that one needs to finish and produce a move.
- */
 let liveAnalysisTimer = null;
 function scheduleLiveAnalysis(){
   if(!state.analysisMode || !state.fenHistory.length || state.sfMode === 'continue') return;
@@ -1741,7 +2083,7 @@ document.getElementById('btnStockfishGo').addEventListener('click', ()=>{
   if(state.viewIndex !== state.fenHistory.length - 1){ toast('Jump back to the latest move first.'); return; }
   const w = initStockfish();
   if(!w) return;
-  state.solving = false; // engine is taking this move, not the puzzle line
+  state.solving = false;
   setDragEnabled(false);
   state.sfMode = 'continue';
   setEngineSearching(true);
@@ -1759,9 +2101,6 @@ document.getElementById('btnCopyFen').addEventListener('click', async ()=>{
 });
 document.getElementById('btnCopyPgn').addEventListener('click', async ()=>{
   if(!state.fenHistory.length) return;
-  // Rebuilt from our own sanHistory rather than state.chess.pgn(), since
-  // state.chess gets reloaded from a mid-game FEN whenever a branch happens
-  // in analysis mode and loses everything chess.js knew before that point.
   let pgn = '';
   try{
     const g = new Chess(state.fenHistory[0]);
@@ -1834,7 +2173,7 @@ function wireToggle(id, key, onChange){
     if(onChange) onChange(state.settings[key]);
   });
 }
-wireToggle('toggleTheme', 'theme', v=>{ /* single dark theme by design; reserved for future light mode */ });
+wireToggle('toggleTheme', 'theme', v=>{});
 wireToggle('toggleSound', 'sound');
 wireToggle('toggleAnim', 'animations');
 wireToggle('toggleCoords', 'coordinates', v=>{ rebuildBoard(); });
@@ -1865,17 +2204,10 @@ function applyBoardColor(){
   const c = map[state.settings.boardColor] || map.brown;
   document.documentElement.style.setProperty('--board-light', c.light);
   document.documentElement.style.setProperty('--board-dark', c.dark);
-  // chessboard.js 1.0.0 uses data-square-color attributes rather than the old
-  // hashed class names from 0.x, so target those instead of the stale
-  // ".white-1e1d7" / ".black-3c85d" selectors which no longer exist.
   document.querySelectorAll('#board [data-square-color="white"]').forEach(el=>el.style.background = c.light);
   document.querySelectorAll('#board [data-square-color="black"]').forEach(el=>el.style.background = c.dark);
 }
 
-/* ============================================================
-   refreshBoardPosition — keep board, chess.js, and fenHistory in sync
-   after a rebuild (e.g. settings change) without losing puzzle state
-   ============================================================ */
 function refreshBoardPosition(animate){
   if(!state.board) return;
   state.board.orientation(state.boardOrientation);
@@ -1894,12 +2226,9 @@ async function init(){
   renderPieceGrid();
   applyBoardColor();
   updateNavButtons();
-  try{
-    state.masterIndex = await fetchJSONCached(`${CONFIG.REPO_BASE}/index.json`);
-  }catch(e){ console.warn('Master index unavailable yet:', e); }
 
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('sw.js').catch(()=>{/* offline-shell registration is best-effort */});
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
   }
 }
 init();
