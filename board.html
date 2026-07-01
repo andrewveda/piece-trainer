@@ -210,6 +210,239 @@ body{
   overflow:hidden;
   padding-bottom:78px;
 }
+     /*==========================================================
+  DESKTOP - TRUE RESPONSIVE LAYOUT
+==========================================================*/
+
+@media (min-width:900px){
+
+    body{
+        padding-bottom:0;
+    }
+
+    /* Remove mobile header */
+    #screen-trainer .topbar{
+        display:none;
+    }
+
+    /* Main layout */
+    .trainer-wrap{
+
+        display:grid;
+
+        grid-template-columns:
+            minmax(0,1fr)
+            320px;
+
+        gap:42px;
+
+        align-items:center;
+
+        justify-content:center;
+
+        width:100%;
+
+        height:100vh;
+
+        padding:24px 60px 24px 210px;
+
+        box-sizing:border-box;
+
+    }
+
+    .board-col{
+
+        display:flex;
+
+        flex-direction:column;
+
+        align-items:center;
+
+        justify-content:center;
+
+    }
+
+    /*
+        The magic.
+
+        Board size is limited BOTH by viewport height
+        and by remaining width.
+
+        It will NEVER overflow.
+    */
+
+    .board-shell{
+
+        width:min(
+
+            calc(100vh - 120px),
+
+            calc(100vw - 650px)
+
+        );
+
+        max-width:none;
+
+        margin:0;
+
+    }
+
+    #board{
+
+        width:100%;
+
+    }
+
+    .board-toolbar,
+    .status-bar,
+    .nav-row,
+    .action-row{
+
+        width:100%;
+
+        max-width:none;
+
+    }
+
+    .side-panel{
+
+        width:320px;
+
+        max-width:320px;
+
+        margin:0;
+
+        align-self:center;
+
+    }
+
+    /* Desktop navigation */
+
+    .bottom-nav{
+
+        position:fixed;
+
+        left:28px;
+
+        top:50%;
+
+        transform:translateY(-50%);
+
+        right:auto;
+
+        bottom:auto;
+
+        width:150px;
+
+        display:flex;
+
+        flex-direction:column;
+
+        gap:6px;
+
+        padding:8px;
+
+        border-radius:16px;
+
+        background:rgba(12,15,22,.65);
+
+        backdrop-filter:blur(22px);
+
+        border:1px solid rgba(255,255,255,.06);
+
+        box-shadow:0 12px 36px rgba(0,0,0,.25);
+
+        z-index:100;
+
+    }
+
+    .nav-btn{
+
+        flex-direction:row;
+
+        justify-content:flex-start;
+
+        gap:12px;
+
+        padding:10px 14px;
+
+        border-radius:10px;
+
+        font-size:13px;
+
+    }
+
+    .nav-btn .ic{
+
+        width:18px;
+
+        text-align:center;
+
+        font-size:18px;
+
+    }
+
+}
+/* ===========================================
+   Ultra-compact Stockfish box (mobile only)
+   =========================================== */
+
+@media (max-width:700px){
+
+  /* shrink the card itself */
+  .side-panel .info-card:has(#toggleAnalysis){
+      padding:10px 12px;
+      margin-bottom:8px;
+  }
+
+  /* tighter heading */
+  .side-panel .info-card h3{
+      font-size:11px;
+      margin-bottom:6px;
+      letter-spacing:1px;
+  }
+
+  /* eval / depth / best */
+  .engine-compact-row{
+      gap:10px;
+      font-size:11px;
+      padding:0 0 6px;
+  }
+
+  /* analysis row */
+  .engine-toggle-row{
+      padding:4px 0;
+      min-height:auto;
+  }
+
+  .engine-toggle-row .sub{
+      display:none;
+  }
+
+  .engine-toggle-row .lbl{
+      font-size:11px;
+      font-weight:600;
+      line-height:1;
+  }
+
+  .switch.small{
+      transform:scale(.78);
+      transform-origin:right center;
+  }
+
+  /* stockfish button */
+  .mini-actions{
+      margin-top:6px;
+  }
+
+  .mini-actions .btn{
+      min-height:32px;
+      padding:7px 10px;
+      font-size:11px;
+      border-radius:10px;
+  }
+
+}
 </style>
 </head>
 <body>
@@ -298,7 +531,7 @@ body{
         <div class="info-row"><span>Session Solved</span><span class="v" id="infoSession">0</span></div>
       </div>
       <div class="info-card glass">
-        <h3>Stockfish Engine <span id="engineLiveDot" style="font-size:10px;color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;">● live</span></h3>
+        <h3>Stockfish Engine <span id="engineLiveDot" style="font-size:10px;color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;">○ off</span></h3>
         <div class="engine-compact-row">
           <span>Eval <strong id="engineEval">—</strong></span>
           <span>Depth <strong id="engineDepth">—</strong></span>
@@ -539,15 +772,21 @@ async function fetchJSONCached(url){
 }
 
 async function getPieceFileList(piece){
-  if(state.pieceIndexCache.has(piece)) return state.pieceIndexCache.get(piece);
-  const idx = await fetchJSONCached(`${CONFIG.REPO_BASE}/${piece}/index.json`);
-  const list = Array.isArray(idx) ? idx : (idx.files || idx[piece] || []);
-  state.pieceIndexCache.set(piece, list);
-  return list;
-}
+  if(state.pieceIndexCache.has(piece))
+    return state.pieceIndexCache.get(piece);
 
+  const idx = await fetchJSONCached(`${CONFIG.REPO_BASE}/${piece}/index.json`);
+
+  const data = {
+    files: Array.isArray(idx) ? idx : (idx.files || []),
+    totalPuzzles: idx.totalPuzzles || 0
+  };
+
+  state.pieceIndexCache.set(piece, data);
+  return data;
+}
 async function getRandomPuzzleForPiece(piece){
-  const files = await getPieceFileList(piece);
+  const { files } = await getPieceFileList(piece);
   if(!files.length) throw new Error('No puzzle files found for ' + piece);
   // try a handful of random files so a difficulty filter has a chance of matching
   const tried = new Set();
@@ -654,8 +893,9 @@ function renderPieceGrid(){
     `;
     card.addEventListener('click', (e)=>{ ripple(card,e); startTraining(p.key); });
     grid.appendChild(card);
-    getPieceFileList(p.key).then(files=>{
-      document.getElementById('count-' + p.key).textContent = files.length + ' files';
+    getPieceFileList(p.key).then(data=>{
+    document.getElementById('count-' + p.key).textContent =
+        data.totalPuzzles.toLocaleString() + " puzzles";
     }).catch(()=>{ document.getElementById('count-' + p.key).textContent = 'offline'; });
   });
 }
@@ -760,8 +1000,8 @@ async function startDailyPuzzle(){
   document.getElementById('loadingOverlay').classList.remove('hidden');
   setDragEnabled(false);
   try{
-    const files = await getPieceFileList(seedPiece);
-    const file = files[hashStr(today + seedPiece) % files.length];
+   const { files } = await getPieceFileList(seedPiece);
+const file = files[hashStr(today + seedPiece) % files.length];
     const data = await fetchJSONCached(`${CONFIG.REPO_BASE}/${seedPiece}/${file}`);
     const arr = Array.isArray(data) ? data : (data.puzzles || []);
     const puzzle = arr[hashStr(today + file) % arr.length];
@@ -1411,6 +1651,7 @@ function setEngineSearching(isSearching){
   const dot = document.getElementById('engineLiveDot');
   if(!dot) return;
   dot.classList.toggle('searching', isSearching);
+  if(!state.analysisMode){ dot.textContent = '○ off'; return; }
   dot.textContent = isSearching ? '● thinking…' : '● live';
 }
 
@@ -1431,6 +1672,10 @@ function renderEnginePanel(){
   }
   depthEl.textContent = line.depth ?? '—';
   clearBoardArrows();
+  if(!state.analysisMode){
+    bestEl.textContent = '—';
+    return;
+  }
   if(line.pv && line.pv.length && state.fenHistory.length){
     try{
       const tmp = new Chess(state.fenHistory[state.viewIndex]);
@@ -1449,20 +1694,22 @@ function renderEnginePanel(){
 }
 
 /**
- * Live analysis: instead of requiring a manual "Analyze" click after every
- * move, the engine automatically re-evaluates whenever the displayed
- * position changes (debounced so rapid stepping through moves doesn't spam
- * the worker). It never interrupts an in-flight "Continue with Stockfish"
+ * Live analysis: only runs while Analysis Mode is on — the engine and its
+ * board arrow are otherwise fully dormant, so puzzle-solving never has a
+ * silent "answer" sitting one tap away. Once Analysis Mode is switched on,
+ * the engine automatically re-evaluates whenever the displayed position
+ * changes (debounced so rapid stepping through moves doesn't spam the
+ * worker). It never interrupts an in-flight "Continue with Stockfish"
  * search, since that one needs to finish and produce a move.
  */
 let liveAnalysisTimer = null;
 function scheduleLiveAnalysis(){
-  if(!state.fenHistory.length || state.sfMode === 'continue') return;
+  if(!state.analysisMode || !state.fenHistory.length || state.sfMode === 'continue') return;
   clearTimeout(liveAnalysisTimer);
   liveAnalysisTimer = setTimeout(runLiveAnalysis, 220);
 }
 function runLiveAnalysis(){
-  if(!state.fenHistory.length || state.sfMode === 'continue') return;
+  if(!state.analysisMode || !state.fenHistory.length || state.sfMode === 'continue') return;
   const w = initStockfish();
   if(!w) return;
   state.sfMode = 'analyze';
