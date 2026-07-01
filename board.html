@@ -39,7 +39,7 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden;}
-body{position:relative;min-height:100vh;padding-bottom:78px;}
+body{position:fixed;inset:0;overflow:hidden;padding-bottom:78px;}
 ::-webkit-scrollbar{width:8px;}
 ::-webkit-scrollbar-thumb{background:var(--panel-border);border-radius:8px;}
 @media (prefers-reduced-motion: reduce){*{animation-duration:0.01ms !important;transition-duration:0.01ms !important;}}
@@ -204,185 +204,121 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 .panel-hidden{display:none!important;}
 
 .hidden{display:none!important;}
-body{
-  position:fixed;
-  inset:0;
-  overflow:hidden;
-  padding-bottom:78px;
-}
-     /*==========================================================
-  DESKTOP - TRUE RESPONSIVE LAYOUT
-==========================================================*/
 
+/* ===========================================================
+   DESKTOP LAYOUT (single source of truth — 900px+)
+   Board is the hero: it is sized against the viewport first,
+   with a slim control rail on its left and a quiet info panel
+   on its right. Nothing competes with the board for attention.
+   =========================================================== */
 @media (min-width:900px){
 
-    body{
-        padding-bottom:0;
-    }
+  body{ padding-bottom:0; }
+
+  #screen-trainer .topbar{ display:none; }
+
+  /* Floating primary nav, left edge, vertically centered */
+  .bottom-nav{
+    position:fixed;
+    left:28px; top:50%; right:auto; bottom:auto;
+    transform:translateY(-50%);
+    width:150px;
+    display:flex; flex-direction:column; gap:6px;
+    padding:8px; border-radius:16px;
+    background:rgba(12,15,22,.65);
+    backdrop-filter:blur(22px);
+    border:1px solid rgba(255,255,255,.06);
+    box-shadow:0 12px 36px rgba(0,0,0,.25);
+    z-index:100;
+  }
+  .nav-btn{
+    flex-direction:row; justify-content:flex-start; gap:12px;
+    padding:10px 14px; border-radius:10px; font-size:13px;
+  }
+  .nav-btn .ic{ width:18px; text-align:center; font-size:18px; }
+
+  /* Overall stage: control rail | board | info panel */
+  .trainer-wrap{
+    display:grid;
+    grid-template-columns: 88px minmax(0,1fr) 320px;
+    column-gap:40px;
+    align-items:center;
+    justify-content:center;
+    width:100%;
+    height:100vh;
+    margin:0;
+    padding:32px 56px 32px 210px;
+    max-width:none;
+  }
+
+  /* board-col hosts the rail (col 1) and the board (col 2) */
+  .board-col{
+    display:grid;
+    grid-template-columns: 88px minmax(0,1fr);
+    grid-template-rows: 1fr auto 1fr;
+    grid-template-areas:
+      "rail board"
+      "rail board"
+      "rail board";
+    column-gap:40px;
+    align-items:center;
+    width:100%;
+    height:100%;
+  }
+
+  /* The board: sized by whichever dimension is tighter, always a square,
+     always centered — this is what gives it maximum, stable prominence. */
+  .board-shell{
+    grid-area:board;
+    width:min(100%, calc(100vh - 160px));
+    aspect-ratio:1/1;
+    max-width:none;
+    margin:0 auto;
+  }
+  #board{ width:100%; height:100%; }
+
+  /* Slim vertical control rail, quietly grouped top-to-bottom:
+     flip/status/favorite  ·  step navigation  ·  hint/solution/next */
+  .board-toolbar,
+  .nav-row,
+  .action-row{
+    grid-area:rail;
+    width:100%;
+    max-width:none;
+    margin:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .board-toolbar{ grid-row:1; align-self:end; gap:10px; }
+  .nav-row{ grid-row:2; gap:8px; }
+  .action-row{ grid-row:3; align-self:start; gap:8px; flex-wrap:nowrap; }
+
+  .board-toolbar .status-bar{
+    writing-mode:vertical-rl;
+    transform:rotate(180deg);
+    width:auto;
+    min-height:120px;
+    text-align:center;
+    margin:0;
+    font-size:13px;
+  }
+  .board-toolbar .icon-btn,
+  .nav-row .icon-btn{ width:48px; height:48px; }
+
+  .action-row .btn{
+    width:100%;
+    padding:10px 4px;
+    font-size:10.5px;
+    line-height:1.3;
+    white-space:normal;
+    min-height:44px;
+  }
+  .action-row .btn.primary{ order:-1; margin-bottom:4px; }
 
-    /* Remove mobile header */
-    #screen-trainer .topbar{
-        display:none;
-    }
-
-    /* Main layout */
-    .trainer-wrap{
-
-        display:grid;
-
-        grid-template-columns:
-            minmax(0,1fr)
-            320px;
-
-        gap:42px;
-
-        align-items:center;
-
-        justify-content:center;
-
-        width:100%;
-
-        height:100vh;
-
-        padding:24px 60px 24px 210px;
-
-        box-sizing:border-box;
-
-    }
-
-    .board-col{
-
-        display:flex;
-
-        flex-direction:column;
-
-        align-items:center;
-
-        justify-content:center;
-
-    }
-
-    /*
-        The magic.
-
-        Board size is limited BOTH by viewport height
-        and by remaining width.
-
-        It will NEVER overflow.
-    */
-
-    .board-shell{
-
-        width:min(
-
-            calc(100vh - 120px),
-
-            calc(100vw - 650px)
-
-        );
-
-        max-width:none;
-
-        margin:0;
-
-    }
-
-    #board{
-
-        width:100%;
-
-    }
-
-    .board-toolbar,
-    .status-bar,
-    .nav-row,
-    .action-row{
-
-        width:100%;
-
-        max-width:none;
-
-    }
-
-    .side-panel{
-
-        width:320px;
-
-        max-width:320px;
-
-        margin:0;
-
-        align-self:center;
-
-    }
-
-    /* Desktop navigation */
-
-    .bottom-nav{
-
-        position:fixed;
-
-        left:28px;
-
-        top:50%;
-
-        transform:translateY(-50%);
-
-        right:auto;
-
-        bottom:auto;
-
-        width:150px;
-
-        display:flex;
-
-        flex-direction:column;
-
-        gap:6px;
-
-        padding:8px;
-
-        border-radius:16px;
-
-        background:rgba(12,15,22,.65);
-
-        backdrop-filter:blur(22px);
-
-        border:1px solid rgba(255,255,255,.06);
-
-        box-shadow:0 12px 36px rgba(0,0,0,.25);
-
-        z-index:100;
-
-    }
-
-    .nav-btn{
-
-        flex-direction:row;
-
-        justify-content:flex-start;
-
-        gap:12px;
-
-        padding:10px 14px;
-
-        border-radius:10px;
-
-        font-size:13px;
-
-    }
-
-    .nav-btn .ic{
-
-        width:18px;
-
-        text-align:center;
-
-        font-size:18px;
-
-    }
-
+  .side-panel{ width:320px; max-width:320px; margin:0; align-self:center; }
 }
+
 /* ===========================================
    Ultra-compact Stockfish box (mobile only)
    =========================================== */
@@ -446,227 +382,6 @@ body{
       transform-origin: right center;
       margin: 0 !important;
   }
-}
-     /* ===========================================
-   Desktop: move board controls to the left
-   =========================================== */
-
-@media (min-width:900px){
-
-  .trainer-wrap{
-    grid-template-columns:90px minmax(0,1fr) 320px;
-    grid-template-areas:
-      "controls board side";
-    align-items:center;
-  }
-
-  .board-col{
-    grid-area:board;
-
-    display:grid;
-    grid-template-columns:70px auto;
-    grid-template-areas:
-      "controls board"
-      "controls actions";
-
-    column-gap:18px;
-    align-items:center;
-  }
-
-  .board-shell{
-    grid-area:board;
-  }
-
-  .action-row{
-    grid-area:actions;
-  }
-
-  /* Left control strip */
-
-  .board-toolbar,
-  .nav-row{
-
-    grid-area:controls;
-
-    width:60px;
-    max-width:none;
-
-    margin:0;
-
-    display:flex;
-    flex-direction:column;
-
-    justify-content:center;
-
-    align-items:center;
-
-    gap:10px;
-
-  }
-
-  .board-toolbar{
-
-    order:1;
-
-  }
-
-  .nav-row{
-
-    order:2;
-
-    margin-top:18px;
-
-  }
-
-  .board-toolbar .status-bar{
-
-    writing-mode:vertical-rl;
-
-    transform:rotate(180deg);
-
-    width:auto;
-
-    min-height:170px;
-
-    text-align:center;
-
-    margin:8px 0;
-
-    font-size:14px;
-
-  }
-
-  .board-toolbar .icon-btn,
-  .nav-row .icon-btn{
-
-    width:48px;
-    height:48px;
-
-  }
-
-}
-     @media (min-width:900px){
-
-    body{
-        padding-bottom:0;
-    }
-
-    /* Remove mobile header */
-    #screen-trainer .topbar{
-        display:none;
-    }
-
-    /* Main layout container */
-    .trainer-wrap{
-        display:grid;
-        grid-template-columns: minmax(0,1fr) 320px;
-        gap:42px;
-        align-items:center;
-        justify-content:center;
-        width:100%;
-        height:100vh;
-        padding:24px 60px 24px 210px;
-        box-sizing:border-box;
-    }
-
-    /* Transform the column into a 2-column grid layout */
-    .board-col{
-        display:grid !important;
-        grid-template-columns: minmax(0,1fr) 260px;
-        grid-template-rows: auto auto auto;
-        gap: 14px 28px;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-    }
-
-    /* Pin the board to the left column and let it span all control rows */
-    .board-shell{
-        grid-column: 1;
-        grid-row: 1 / span 3;
-        justify-self: center;
-        /* Recalculated sizing budget to protect aspect ratios with side-by-side controls */
-        width: min(
-            calc(100vh - 60px),
-            calc(100vw - 930px)
-        );
-        max-width:none;
-        margin:0;
-    }
-
-    #board{
-        width:100%;
-    }
-
-    /* Stack the control zones cleanly on the right column */
-    .board-toolbar{
-        grid-column: 2;
-        grid-row: 1;
-        align-self: end;
-        width: 100%;
-        max-width: none;
-    }
-
-    .nav-row{
-        grid-column: 2;
-        grid-row: 2;
-        align-self: center;
-        width: 100%;
-        max-width: none;
-        margin: 0 !important;
-    }
-
-    .action-row{
-        grid-column: 2;
-        grid-row: 3;
-        align-self: start;
-        width: 100%;
-        max-width: none;
-        margin: 0 !important;
-    }
-
-    .side-panel{
-        width:320px;
-        max-width:320px;
-        margin:0;
-        align-self:center;
-    }
-
-    /* Desktop navigation side strip */
-    .bottom-nav{
-        position:fixed;
-        left:28px;
-        top:50%;
-        transform:translateY(-50%);
-        right:auto;
-        bottom:auto;
-        width:150px;
-        display:flex;
-        flex-direction:column;
-        gap:6px;
-        padding:8px;
-        border-radius:16px;
-        background:rgba(12,15,22,.65);
-        backdrop-filter:blur(22px);
-        border:1px solid rgba(255,255,255,.06);
-        box-shadow:0 12px 36px rgba(0,0,0,.25);
-        z-index:100;
-    }
-
-    .nav-btn{
-        flex-direction:row;
-        justify-content:flex-start;
-        gap:12px;
-        padding:10px 14px;
-        border-radius:10px;
-        font-size:13px;
-    }
-
-    .nav-btn .ic{
-        width:18px;
-        text-align:center;
-        font-size:18px;
-    }
 }
 </style>
 </head>
@@ -1178,10 +893,18 @@ function initBoardIfNeeded(){
     window.addEventListener('resize', ()=>state.board && state.board.resize());
     state.boardResizeWired = true;
   }
-  // click-to-move: delegated so it survives rebuildBoard() recreating the squares
-  $('#board').off('click.cpt').on('click.cpt', '.square-55d63', function(){
-    const cls = Array.from(this.classList).find(c=>/^square-[a-h][1-8]$/.test(c));
-    if(cls) onBoardSquareClick(cls.replace('square-',''));
+  // click/tap-to-move: bound on 'click' rather than mousedown/touchstart.
+  // chessboard.js (draggable:true) already listens for mousedown/touchstart
+  // to begin its own drag tracking, so binding our selection logic on the
+  // same events raced against it — a plain tap looked like a zero-distance
+  // drag to chessboard.js, which resolved it as a drop-on-self and reset the
+  // square, wiping out the selection highlight we'd just drawn. A native
+  // 'click' only fires when mousedown+mouseup happen on the same element,
+  // so a real drag (mousedown on A, mouseup on B) never triggers it, while a
+  // genuine tap fires cleanly with nothing else contending for it.
+  $('#board').off('click.cpt').on('click.cpt', '[data-square]', function(e) {
+    const square = $(this).attr('data-square');
+    if (square) onBoardSquareClick(square);
   });
 }
 function rebuildBoard(){
@@ -1372,8 +1095,8 @@ function setDragEnabled(enabled){
 /* ============================================================
    LEGAL-MOVE HIGHLIGHTING + CLICK-TO-MOVE
    ============================================================ */
-function squareEl(square){
-  return document.querySelector(`#board .square-${square}`);
+function squareEl(square) {
+  return document.querySelector(`#board [data-square="${square}"]`);
 }
 function clearHighlights(){
   document.querySelectorAll('#board .sq-legal, #board .sq-legal-capture, #board .sq-selected')
@@ -1421,24 +1144,43 @@ function canSelect(square){
 }
 function onBoardSquareClick(square){
   if(!state.fenHistory.length || !state.dragEnabled) return;
+
   if(!state.analysisMode){
     if(state.viewIndex !== state.fenHistory.length - 1) return;
     if(!(state.solving && state.currentPuzzle)) return;
   }
+
+  // Smooth selection switching: if a piece is already selected, tapping another piece of your own changes focus smoothly
+  if (canSelect(square) && square !== state.selectedSquare) {
+    highlightLegalMoves(square);
+    return;
+  }
+
+  // Second tap = attempt move
   if(state.selectedSquare){
-    if(square === state.selectedSquare){ clearHighlights(); return; }
-    if(state.legalTargets.includes(square)){
-      const source = state.selectedSquare;
+    if(square === state.selectedSquare){
       clearHighlights();
-      const outcome = state.analysisMode ? attemptFreeMove(source, square) : attemptSolvingMove(source, square);
-      if(outcome === 'accepted') state.board.position(state.chess.fen());
       return;
     }
-  }
-  if(canSelect(square)) highlightLegalMoves(square);
-  else clearHighlights();
-}
 
+    const outcome = state.analysisMode
+      ? attemptFreeMove(state.selectedSquare, square)
+      : attemptSolvingMove(state.selectedSquare, square);
+
+    clearHighlights();
+
+    if(outcome === 'accepted'){
+      state.board.position(state.chess.fen());
+    }
+
+    return;
+  }
+
+  // First tap = select own piece
+  if(canSelect(square)){
+    highlightLegalMoves(square);
+  }
+}
 /* ---- puzzle-mode move validation: must match the puzzle's solution line ---- */
 function attemptSolvingMove(source, target){
   if(!state.dragEnabled || !state.solving) return 'rejected';
