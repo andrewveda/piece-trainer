@@ -132,6 +132,8 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 
 .engine-compact-row{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--text-dim);padding:2px 0 8px;}
 .engine-compact-row strong{color:var(--gold-soft);font-weight:700;}
+#engineLiveDot.searching{color:var(--gold-soft);animation:enginePulse 1s ease-in-out infinite;}
+@keyframes enginePulse{0%,100%{opacity:0.4;}50%{opacity:1;}}
 .engine-toggle-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0 10px;border-top:1px solid rgba(255,255,255,0.05);}
 .engine-toggle-row .lbl{font-size:12.5px;}
 .engine-toggle-row .sub{font-size:10.5px;color:var(--text-dim);margin-top:1px;}
@@ -273,7 +275,7 @@ body{
       <div class="nav-row">
         <button class="icon-btn" id="btnFirst" title="Jump to start">⏮</button>
         <button class="icon-btn" id="btnPrev" title="Previous move">◀</button>
-        <button class="icon-btn" id="btnUndo" title="Undo my last move">↩</button>
+        <button class="icon-btn" id="btnReset" title="Restart this puzzle">⟲</button>
         <button class="icon-btn" id="btnNextMove" title="Next move">▶</button>
         <button class="icon-btn" id="btnLast" title="Jump to latest">⏭</button>
       </div>
@@ -296,7 +298,7 @@ body{
         <div class="info-row"><span>Session Solved</span><span class="v" id="infoSession">0</span></div>
       </div>
       <div class="info-card glass">
-        <h3>Stockfish Engine</h3>
+        <h3>Stockfish Engine <span id="engineLiveDot" style="font-size:10px;color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;">○ off</span></h3>
         <div class="engine-compact-row">
           <span>Eval <strong id="engineEval">—</strong></span>
           <span>Depth <strong id="engineDepth">—</strong></span>
@@ -307,8 +309,7 @@ body{
           <div class="switch small" id="toggleAnalysis"><div class="knob"></div></div>
         </div>
         <div class="mini-actions">
-          <button class="btn" id="btnStockfishAnalyze">🤖 Analyze</button>
-          <button class="btn" id="btnStockfishGo">▶ Continue</button>
+          <button class="btn" id="btnStockfishGo">▶ Continue with Stockfish</button>
         </div>
       </div>
       <div class="info-card glass panel-hidden">
@@ -471,6 +472,9 @@ const state = {
   solving: false,          // true while it is the user's turn to find the solving move
   moveCursor: 0,            // index into puzzle.moves the live game has reached
   fenHistory: [],           // fen snapshot after each ply played (index 0 = puzzle start fen)
+  sanHistory: [],           // SAN for each ply, sanHistory[i] produced fenHistory[i+1] — tracked
+                             // by us rather than read from chess.js, since chess.js loses move
+                             // history whenever we reload a FEN mid-game (needed for branching).
   viewIndex: 0,             // which fen in fenHistory is currently shown on the board (review mode)
   boardOrientation: 'white',
   puzzleStartTime: null,
@@ -627,7 +631,11 @@ function showScreen(name){
 document.querySelectorAll('.nav-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>showScreen(btn.dataset.screen));
 });
-document.getElementById('trainerBack').addEventListener('click', ()=>showScreen('home'));
+document.getElementById('trainerBack').addEventListener('click', ()=>{
+  if(state.sf) state.sf.postMessage('stop');
+  clearTimeout(liveAnalysisTimer);
+  showScreen('home');
+});
 
 /* ============================================================
    HOME SCREEN
@@ -778,6 +786,7 @@ function loadPuzzle(pieceKey, puzzle){
   state.chess = new Chess(puzzle.fen);
   state.moveCursor = 0;
   state.fenHistory = [puzzle.fen];
+  state.sanHistory = [];
   state.viewIndex = 0;
   state.solving = false;
   state.puzzleStartTime = Date.now();
@@ -837,6 +846,7 @@ function applyMoveToBoard(uci, showOnBoard){
   const result = state.chess.move(mv);
   if(!result) return null;
   state.fenHistory.push(state.chess.fen());
+  state.sanHistory.push(result.san);
   const wasAtLatest = state.viewIndex === state.fenHistory.length - 2;
   if(wasAtLatest){
     state.viewIndex = state.fenHistory.length - 1;
@@ -865,14 +875,14 @@ function updateMoveDisplay(flashClass){
     el.className = 'status-bar info';
     return;
   }
+  scheduleLiveAnalysis();
   const idx = state.viewIndex;
   if(idx <= 0){
     el.textContent = 'Starting position';
     el.className = 'status-bar info';
     return;
   }
-  const history = state.chess.history();
-  const san = history[idx - 1];
+  const san = state.sanHistory[idx - 1];
   if(!san){ el.textContent = 'Starting position'; el.className = 'status-bar info'; return; }
   const moveNum = Math.ceil(idx / 2);
   const isWhiteMove = idx % 2 === 1;
@@ -906,10 +916,20 @@ function clearHighlights(){
   state.selectedSquare = null;
   state.legalTargets = [];
 }
+/**
+ * Returns a fresh chess.js instance for whatever position is currently
+ * displayed (state.viewIndex), independent of state.chess. This is what lets
+ * analysis mode branch: playing a move works off the *displayed* position,
+ * not just the tip of the line, and jumping around in review never mutates
+ * the "live" game object.
+ */
+function viewChess(){
+  const fen = state.fenHistory[state.viewIndex];
+  return fen ? new Chess(fen) : new Chess();
+}
 function highlightLegalMoves(square){
   clearHighlights();
-  if(!state.chess) return;
-  const moves = state.chess.moves({square, verbose:true});
+  const moves = viewChess().moves({square, verbose:true});
   if(!moves.length) return;
   state.selectedSquare = square;
   state.legalTargets = moves.map(m=>m.to);
@@ -921,18 +941,25 @@ function highlightLegalMoves(square){
   });
 }
 function canSelect(square){
-  if(!state.chess || state.chess.game_over()) return false;
-  if(state.viewIndex !== state.fenHistory.length - 1) return false;
-  if(!state.dragEnabled) return false;
-  if(!state.analysisMode && !(state.solving && state.currentPuzzle)) return false;
-  const piece = state.chess.get(square);
+  if(!state.fenHistory.length || !state.dragEnabled) return false;
+  if(state.analysisMode){
+    // any reviewed position is fair game — branching happens on move.
+  }else{
+    if(state.viewIndex !== state.fenHistory.length - 1) return false;
+    if(!(state.solving && state.currentPuzzle)) return false;
+  }
+  const vc = viewChess();
+  if(vc.game_over()) return false;
+  const piece = vc.get(square);
   if(!piece) return false;
-  return (state.chess.turn() === 'w') === (piece.color === 'w');
+  return (vc.turn() === 'w') === (piece.color === 'w');
 }
 function onBoardSquareClick(square){
-  if(!state.chess || state.viewIndex !== state.fenHistory.length - 1) return;
-  if(!state.dragEnabled) return;
-  if(!state.analysisMode && !(state.solving && state.currentPuzzle)) return;
+  if(!state.fenHistory.length || !state.dragEnabled) return;
+  if(!state.analysisMode){
+    if(state.viewIndex !== state.fenHistory.length - 1) return;
+    if(!(state.solving && state.currentPuzzle)) return;
+  }
   if(state.selectedSquare){
     if(square === state.selectedSquare){ clearHighlights(); return; }
     if(state.legalTargets.includes(square)){
@@ -981,6 +1008,7 @@ function attemptSolvingMove(source, target){
   if(!result) return 'rejected'; // safety net: should not happen given checks above
 
   state.fenHistory.push(state.chess.fen());
+  state.sanHistory.push(result.san);
   state.viewIndex = state.fenHistory.length - 1;
 
   flashSquare(target, 'sq-correct');
@@ -1003,14 +1031,23 @@ function attemptSolvingMove(source, target){
   return 'accepted';
 }
 
-/* ---- analysis-mode move validation: any legal move for the side to move ---- */
+/**
+ * Analysis-mode move validation: any legal move for the side to move, played
+ * from whatever position is currently displayed. Playing a move from a
+ * reviewed (non-tip) position starts a new branch — everything beyond the
+ * current view is discarded in favor of the new line, exactly like a normal
+ * chess analysis board. Because state.chess is rebuilt fresh from FEN each
+ * branch, we track SAN ourselves in sanHistory rather than relying on
+ * chess.js's own move history (which chess.js forgets on reload-from-FEN).
+ */
 function attemptFreeMove(source, target){
-  if(!state.chess || state.chess.game_over()) return 'rejected';
-  const legalMoves = state.chess.moves({verbose:true});
+  const vc = viewChess();
+  if(vc.game_over()) return 'rejected';
+  const legalMoves = vc.moves({verbose:true});
   const isLegal = legalMoves.some(m=>m.from===source && m.to===target);
   if(!isLegal) return 'rejected';
 
-  const isPromotion = (state.chess.get(source)||{}).type === 'p' &&
+  const isPromotion = (vc.get(source)||{}).type === 'p' &&
                        (target[1] === '8' || target[1] === '1');
   let promotionPiece = 'q';
   if(isPromotion){
@@ -1018,11 +1055,17 @@ function attemptFreeMove(source, target){
     if(choice && /^[qrbn]$/i.test(choice.trim())) promotionPiece = choice.trim().toLowerCase();
   }
 
-  const result = state.chess.move({ from: source, to: target, promotion: promotionPiece });
+  const result = vc.move({ from: source, to: target, promotion: promotionPiece });
   if(!result) return 'rejected';
 
-  state.fenHistory.push(state.chess.fen());
+  state.fenHistory = state.fenHistory.slice(0, state.viewIndex + 1);
+  state.sanHistory = state.sanHistory.slice(0, state.viewIndex);
+  state.fenHistory.push(vc.fen());
+  state.sanHistory.push(result.san);
   state.viewIndex = state.fenHistory.length - 1;
+  state.chess = vc; // this branch is now the tip
+  state.solving = false; // the board has now diverged from the puzzle's own line;
+                          // resuming puzzle solving requires a Reset
 
   flashSquare(target, 'sq-correct');
   sfx.move();
@@ -1132,8 +1175,7 @@ function addToRecents(piece, puzzle){
    ============================================================ */
 function renderMoveList(){
   const el = document.getElementById('moveList');
-  if(!state.chess){ el.textContent = '—'; return; }
-  const history = state.chess.history();
+  const history = state.sanHistory || [];
   if(!history.length){ el.textContent = '—'; return; }
   el.innerHTML = '';
   history.forEach((san, i)=>{
@@ -1161,8 +1203,9 @@ function jumpToFenIndex(idx){
   renderMoveList();
   updateNavButtons();
   updateMoveDisplay();
-  // Disable dragging while reviewing a past position; resuming play requires "latest".
-  setDragEnabled(idx === state.fenHistory.length - 1 && state.solving);
+  // Disable dragging while reviewing a past position in puzzle mode (resuming
+  // play requires "latest"); analysis mode always allows moving from any point.
+  setDragEnabled(state.analysisMode || (idx === state.fenHistory.length - 1 && state.solving));
 }
 function updateNavButtons(){
   const atStart = state.viewIndex <= 0;
@@ -1171,29 +1214,17 @@ function updateNavButtons(){
   document.getElementById('btnPrev').disabled = atStart;
   document.getElementById('btnNextMove').disabled = atLatest;
   document.getElementById('btnLast').disabled = atLatest;
-  document.getElementById('btnUndo').disabled = !(state.currentPuzzle && state.moveCursor > 1 && atLatest && !state.solving === false ? true : (state.currentPuzzle && state.moveCursor > 1));
+  document.getElementById('btnReset').disabled = !state.currentPuzzle;
 }
 document.getElementById('btnFirst').addEventListener('click', ()=>jumpToFenIndex(0));
 document.getElementById('btnPrev').addEventListener('click', ()=>jumpToFenIndex(state.viewIndex - 1));
 document.getElementById('btnNextMove').addEventListener('click', ()=>jumpToFenIndex(state.viewIndex + 1));
 document.getElementById('btnLast').addEventListener('click', ()=>jumpToFenIndex(state.fenHistory.length - 1));
 
-document.getElementById('btnUndo').addEventListener('click', ()=>{
-  if(!state.currentPuzzle || state.moveCursor <= 1) return; // never undo past the auto-played setup move
-  // Roll the live game back one full ply (the player's last accepted move).
-  state.chess.undo();
-  state.fenHistory.pop();
-  state.moveCursor--;
-  state.viewIndex = state.fenHistory.length - 1;
-  clearHighlights();
-  state.board.position(state.fenHistory[state.viewIndex], false);
-  state.solving = true;
-  setDragEnabled(true);
-  setStatus('Move undone — try again.', 'info');
-  renderMoveList();
-  updateMoveCounter();
-  updateNavButtons();
-  updateMoveDisplay();
+document.getElementById('btnReset').addEventListener('click', ()=>{
+  if(!state.currentPuzzle) return;
+  toast('Puzzle reset — starting over.');
+  loadPuzzle(state.currentPiece, state.currentPuzzle);
 });
 
 /* ============================================================
@@ -1247,7 +1278,11 @@ document.getElementById('toggleAnalysis').addEventListener('click', ()=>{
     toast('Analysis mode — play any legal move.');
   }else{
     setDragEnabled(state.solving);
-    toast('Analysis mode off.');
+    if(state.currentPuzzle && !state.solving && state.moveCursor < state.currentPuzzle.moves.length){
+      toast('Analysis mode off — tap ⟲ Reset to keep solving this puzzle.');
+    }else{
+      toast('Analysis mode off.');
+    }
   }
 });
 document.getElementById('btnFavorite').addEventListener('click', toggleFavorite);
@@ -1365,11 +1400,19 @@ function handleEngineLine(line){
     const best = line.split(' ')[1];
     const wasContinueMode = state.sfMode === 'continue';
     state.sfMode = null;
-    document.getElementById('btnStockfishAnalyze').disabled = false;
+    setEngineSearching(false);
     document.getElementById('btnStockfishGo').disabled = false;
     if(wasContinueMode && best && best !== '(none)') playFreeMove(best);
     if(wasContinueMode && state.analysisMode) setDragEnabled(true);
   }
+}
+
+function setEngineSearching(isSearching){
+  const dot = document.getElementById('engineLiveDot');
+  if(!dot) return;
+  dot.classList.toggle('searching', isSearching);
+  if(!state.analysisMode){ dot.textContent = '○ off'; return; }
+  dot.textContent = isSearching ? '● thinking…' : '● live';
 }
 
 function renderEnginePanel(){
@@ -1389,6 +1432,10 @@ function renderEnginePanel(){
   }
   depthEl.textContent = line.depth ?? '—';
   clearBoardArrows();
+  if(!state.analysisMode){
+    bestEl.textContent = '—';
+    return;
+  }
   if(line.pv && line.pv.length && state.fenHistory.length){
     try{
       const tmp = new Chess(state.fenHistory[state.viewIndex]);
@@ -1406,12 +1453,41 @@ function renderEnginePanel(){
   }
 }
 
+/**
+ * Live analysis: only runs while Analysis Mode is on — the engine and its
+ * board arrow are otherwise fully dormant, so puzzle-solving never has a
+ * silent "answer" sitting one tap away. Once Analysis Mode is switched on,
+ * the engine automatically re-evaluates whenever the displayed position
+ * changes (debounced so rapid stepping through moves doesn't spam the
+ * worker). It never interrupts an in-flight "Continue with Stockfish"
+ * search, since that one needs to finish and produce a move.
+ */
+let liveAnalysisTimer = null;
+function scheduleLiveAnalysis(){
+  if(!state.analysisMode || !state.fenHistory.length || state.sfMode === 'continue') return;
+  clearTimeout(liveAnalysisTimer);
+  liveAnalysisTimer = setTimeout(runLiveAnalysis, 220);
+}
+function runLiveAnalysis(){
+  if(!state.analysisMode || !state.fenHistory.length || state.sfMode === 'continue') return;
+  const w = initStockfish();
+  if(!w) return;
+  state.sfMode = 'analyze';
+  state.sfBestLine = {};
+  renderEnginePanel();
+  setEngineSearching(true);
+  w.postMessage('stop');
+  w.postMessage('position fen ' + state.fenHistory[state.viewIndex]);
+  w.postMessage('go depth ' + CONFIG.ENGINE_DEPTH);
+}
+
 function playFreeMove(uciStr){
   if(!state.chess) return;
   const mv = parseUCI(uciStr);
   const result = state.chess.move(mv);
   if(!result) return;
   state.fenHistory.push(state.chess.fen());
+  state.sanHistory.push(result.san);
   state.viewIndex = state.fenHistory.length - 1;
   clearHighlights();
   state.board.position(state.chess.fen());
@@ -1422,19 +1498,6 @@ function playFreeMove(uciStr){
   toast('Stockfish played ' + result.san);
 }
 
-document.getElementById('btnStockfishAnalyze').addEventListener('click', ()=>{
-  if(!state.fenHistory.length) return toast('Load a puzzle first.');
-  const w = initStockfish();
-  if(!w) return;
-  state.sfMode = 'analyze';
-  state.sfBestLine = {};
-  renderEnginePanel();
-  document.getElementById('btnStockfishAnalyze').disabled = true;
-  w.postMessage('stop');
-  w.postMessage('position fen ' + state.fenHistory[state.viewIndex]);
-  w.postMessage('go depth ' + CONFIG.ENGINE_DEPTH);
-});
-
 document.getElementById('btnStockfishGo').addEventListener('click', ()=>{
   if(!state.chess) return toast('Load a puzzle first.');
   if(state.viewIndex !== state.fenHistory.length - 1){ toast('Jump back to the latest move first.'); return; }
@@ -1443,6 +1506,7 @@ document.getElementById('btnStockfishGo').addEventListener('click', ()=>{
   state.solving = false; // engine is taking this move, not the puzzle line
   setDragEnabled(false);
   state.sfMode = 'continue';
+  setEngineSearching(true);
   document.getElementById('btnStockfishGo').disabled = true;
   w.postMessage('stop');
   w.postMessage('position fen ' + state.chess.fen());
@@ -1456,8 +1520,16 @@ document.getElementById('btnCopyFen').addEventListener('click', async ()=>{
   catch(e){ toast(fen); }
 });
 document.getElementById('btnCopyPgn').addEventListener('click', async ()=>{
-  if(!state.chess) return;
-  const pgn = state.chess.pgn();
+  if(!state.fenHistory.length) return;
+  // Rebuilt from our own sanHistory rather than state.chess.pgn(), since
+  // state.chess gets reloaded from a mid-game FEN whenever a branch happens
+  // in analysis mode and loses everything chess.js knew before that point.
+  let pgn = '';
+  try{
+    const g = new Chess(state.fenHistory[0]);
+    state.sanHistory.forEach(san=>g.move(san));
+    pgn = g.pgn();
+  }catch(e){ pgn = ''; }
   try{ await navigator.clipboard.writeText(pgn); toast('PGN copied'); }
   catch(e){ toast('Could not copy PGN'); }
 });
