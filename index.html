@@ -147,6 +147,12 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 @keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}}
 .sq-hint{box-shadow:inset 0 0 0 9999px rgba(212,175,55,0.5)!important;}
 
+/* legal-move affordances shown the instant a piece is selected */
+.sq-selected{box-shadow:inset 0 0 0 9999px rgba(212,175,55,0.32)!important;}
+.sq-legal,.sq-legal-capture{position:relative;}
+.sq-legal::after{content:'';position:absolute;top:50%;left:50%;width:26%;height:26%;border-radius:50%;background:rgba(20,18,14,0.32);transform:translate(-50%,-50%);pointer-events:none;}
+.sq-legal-capture::after{content:'';position:absolute;inset:6%;border-radius:50%;border:4px solid rgba(20,18,14,0.38);background:transparent;pointer-events:none;}
+
 /* ===================== STATS ===================== */
 .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:14px 16px;max-width:760px;margin:0 auto;}
 @media (min-width:640px){.stats-grid{grid-template-columns:repeat(4,1fr);}}
@@ -182,6 +188,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 .topbar{display:flex;align-items:center;gap:10px;padding:18px 16px 4px;max-width:760px;margin:0 auto;}
 .topbar h2{font-size:22px;}
 .back-btn{background:none;border:none;color:var(--gold);font-size:22px;cursor:pointer;padding:4px 8px;}
+.topbar .spacer{flex:1;}
 
 .hidden{display:none!important;}
 body{
@@ -235,6 +242,8 @@ body{
   <div class="topbar">
     <button class="back-btn" id="trainerBack">←</button>
     <h2 id="trainerTitle">Trainer</h2>
+    <div class="spacer"></div>
+    <button class="icon-btn" id="btnTogglePanel" title="Hide info panel">🙈</button>
   </div>
 
   <div class="trainer-wrap">
@@ -277,6 +286,16 @@ body{
         <div class="info-row"><span>Puzzle ID</span><span class="v" id="infoId">—</span></div>
         <div class="info-row"><span>Move</span><span class="v" id="infoMoveCount">—</span></div>
         <div class="info-row"><span>Session Solved</span><span class="v" id="infoSession">0</span></div>
+      </div>
+      <div class="info-card glass">
+        <h3>Stockfish Engine</h3>
+        <div class="info-row"><span>Eval (white)</span><span class="v" id="engineEval">—</span></div>
+        <div class="info-row"><span>Depth</span><span class="v" id="engineDepth">—</span></div>
+        <div class="info-row"><span>Best Move</span><span class="v" id="engineBest">—</span></div>
+        <div class="mini-actions">
+          <button class="btn" id="btnStockfishAnalyze">🤖 Analyze</button>
+          <button class="btn" id="btnStockfishGo">▶ Continue with Stockfish</button>
+        </div>
       </div>
       <div class="info-card glass">
         <h3>Themes</h3>
@@ -410,6 +429,8 @@ const CONFIG = {
   CACHE_LIMIT: 24,
   AUTO_MOVE_DELAY: 480,
   AUTO_ADVANCE_DELAY: 1400,
+  STOCKFISH_URL: 'https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js',
+  ENGINE_DEPTH: 14,
 };
 
 const PIECES = [
@@ -446,6 +467,11 @@ const state = {
   stats: loadStats(),
   favorites: loadJSON('cpt_favorites', []),
   recents: loadJSON('cpt_recents', []),
+  selectedSquare: null,     // square clicked to start a click-to-move (vs. drag)
+  legalTargets: [],         // legal destination squares for the currently selected piece
+  sf: null,                 // Stockfish Web Worker instance (lazy-created)
+  sfMode: null,             // 'analyze' | 'continue' | null — what the pending engine search is for
+  sfBestLine: {},           // last parsed "info" line from the engine
 };
 
 /* ============================================================
@@ -664,6 +690,11 @@ function initBoardIfNeeded(){
     window.addEventListener('resize', ()=>state.board && state.board.resize());
     state.boardResizeWired = true;
   }
+  // click-to-move: delegated so it survives rebuildBoard() recreating the squares
+  $('#board').off('click.cpt').on('click.cpt', '.square-55d63', function(){
+    const cls = Array.from(this.classList).find(c=>/^square-[a-h][1-8]$/.test(c));
+    if(cls) onBoardSquareClick(cls.replace('square-',''));
+  });
 }
 function rebuildBoard(){
   // Recreate the board (needed when showNotation / pieceTheme options change,
@@ -736,6 +767,9 @@ function loadPuzzle(pieceKey, puzzle){
   state.solving = false;
   state.puzzleStartTime = Date.now();
   setDragEnabled(false);
+  clearHighlights();
+  state.sfBestLine = {};
+  renderEnginePanel();
 
   const sideToSolve = state.chess.turn() === 'w' ? 'black' : 'white';
   state.boardOrientation = state.settings.autoFlip ? sideToSolve : 'white';
@@ -746,7 +780,8 @@ function loadPuzzle(pieceKey, puzzle){
   renderMoveList();
   updateFavoriteButton();
   updateNavButtons();
-  setStatus('Watch the setup move…', 'info');
+  updateMoveDisplay();
+  toast('Watch the setup move…');
 
   // moves[0] is the opponent's "setup" move per Lichess puzzle convention.
   setTimeout(()=>{
@@ -755,7 +790,7 @@ function loadPuzzle(pieceKey, puzzle){
     state.moveCursor = 1;
     state.solving = true;
     setDragEnabled(true);
-    setStatus('Your move — find the best continuation.', 'info');
+    toast('Your move — find the best continuation.');
   }, 600);
 }
 
@@ -796,13 +831,45 @@ function applyMoveToBoard(uci, showOnBoard){
   renderMoveList();
   updateMoveCounter();
   updateNavButtons();
+  updateMoveDisplay();
   return result;
 }
 
-function setStatus(msg, cls){
+/**
+ * The bar between the flip and favorite buttons now always shows notation
+ * (the move just played) instead of transient status text — transient
+ * messages ("Correct!", "Not quite", etc.) go through toast() instead.
+ * `flashClass` ('correct' | 'wrong' | 'info') briefly colors the notation
+ * text, e.g. green right after a correct move, then it settles back to plain.
+ */
+function updateMoveDisplay(flashClass){
   const el = document.getElementById('statusBar');
-  el.textContent = msg;
-  el.className = 'status-bar' + (cls ? ' ' + cls : '');
+  if(!state.chess || !state.fenHistory.length){
+    el.textContent = 'Choose a piece to begin';
+    el.className = 'status-bar info';
+    return;
+  }
+  const idx = state.viewIndex;
+  if(idx <= 0){
+    el.textContent = 'Starting position';
+    el.className = 'status-bar info';
+    return;
+  }
+  const history = state.chess.history();
+  const san = history[idx - 1];
+  if(!san){ el.textContent = 'Starting position'; el.className = 'status-bar info'; return; }
+  const moveNum = Math.ceil(idx / 2);
+  const isWhiteMove = idx % 2 === 1;
+  el.textContent = moveNum + (isWhiteMove ? '. ' : '… ') + san;
+  el.className = 'status-bar' + (flashClass ? ' ' + flashClass : '');
+  if(flashClass){
+    setTimeout(()=>{ if(el.textContent) el.className = 'status-bar'; }, 900);
+  }
+}
+function setStatus(msg, cls){
+  // Legacy call sites now just surface as a toast; the status bar itself is
+  // reserved for live notation (see updateMoveDisplay above).
+  toast(msg);
 }
 
 function setDragEnabled(enabled){
@@ -811,31 +878,73 @@ function setDragEnabled(enabled){
   state.dragEnabled = enabled;
 }
 
-/* ---- drag & drop handlers ---- */
-function onDragStart(source, piece){
+/* ============================================================
+   LEGAL-MOVE HIGHLIGHTING + CLICK-TO-MOVE
+   ============================================================ */
+function squareEl(square){
+  return document.querySelector(`#board .square-${square}`);
+}
+function clearHighlights(){
+  document.querySelectorAll('#board .sq-legal, #board .sq-legal-capture, #board .sq-selected')
+    .forEach(el=>el.classList.remove('sq-legal','sq-legal-capture','sq-selected'));
+  state.selectedSquare = null;
+  state.legalTargets = [];
+}
+function highlightLegalMoves(square){
+  clearHighlights();
+  if(!state.chess) return;
+  const moves = state.chess.moves({square, verbose:true});
+  if(!moves.length) return;
+  state.selectedSquare = square;
+  state.legalTargets = moves.map(m=>m.to);
+  const originEl = squareEl(square);
+  if(originEl) originEl.classList.add('sq-selected');
+  moves.forEach(m=>{
+    const el = squareEl(m.to);
+    if(el) el.classList.add(m.captured ? 'sq-legal-capture' : 'sq-legal');
+  });
+}
+function canSelect(square){
   if(!state.dragEnabled || !state.solving || !state.currentPuzzle) return false;
-  if(state.viewIndex !== state.fenHistory.length - 1) return false; // can't move while reviewing history
-  if(state.chess.game_over()) return false;
-  const isWhitePiece = /^w/.test(piece);
-  if((state.chess.turn()==='w') !== isWhitePiece) return false;
-  return true;
+  if(state.viewIndex !== state.fenHistory.length - 1) return false;
+  if(!state.chess || state.chess.game_over()) return false;
+  const piece = state.chess.get(square);
+  if(!piece) return false;
+  return (state.chess.turn() === 'w') === (piece.color === 'w');
+}
+function onBoardSquareClick(square){
+  if(!state.dragEnabled || !state.solving || !state.currentPuzzle) return;
+  if(state.viewIndex !== state.fenHistory.length - 1) return;
+  if(state.selectedSquare){
+    if(square === state.selectedSquare){ clearHighlights(); return; }
+    if(state.legalTargets.includes(square)){
+      const source = state.selectedSquare;
+      clearHighlights();
+      const outcome = attemptSolvingMove(source, square);
+      if(outcome === 'accepted') state.board.position(state.chess.fen());
+      return;
+    }
+  }
+  if(canSelect(square)) highlightLegalMoves(square);
+  else clearHighlights();
 }
 
-function onDrop(source, target){
-  if(!state.dragEnabled || !state.solving) return 'snapback';
-  if(!state.currentPuzzle || state.moveCursor >= state.currentPuzzle.moves.length) return 'snapback';
+/* ---- shared move validation used by both drag-drop and click-to-move ---- */
+function attemptSolvingMove(source, target){
+  if(!state.dragEnabled || !state.solving) return 'rejected';
+  if(!state.currentPuzzle || state.moveCursor >= state.currentPuzzle.moves.length) return 'rejected';
 
   const expected = parseUCI(state.currentPuzzle.moves[state.moveCursor]);
   const legalMoves = state.chess.moves({verbose:true});
   const isLegal = legalMoves.some(m=>m.from===source && m.to===target);
-  if(!isLegal) return 'snapback';
+  if(!isLegal) return 'rejected';
 
   if(source !== expected.from || target !== expected.to){
     registerAttempt(false);
     flashSquare(target, 'sq-wrong');
     sfx.wrong();
-    setStatus('Not quite — try again.', 'wrong');
-    return 'snapback';
+    toast('Not quite — try again.');
+    return 'rejected';
   }
 
   // Correct move. Resolve under-promotion choice if this move is a pawn promotion.
@@ -851,10 +960,8 @@ function onDrop(source, target){
 
   const moveObj = { from: source, to: target, promotion: promotionPiece };
   const result = state.chess.move(moveObj);
-  if(!result){
-    // safety net: should not happen given the legality + match checks above
-    return 'snapback';
-  }
+  if(!result) return 'rejected'; // safety net: should not happen given checks above
+
   state.fenHistory.push(state.chess.fen());
   state.viewIndex = state.fenHistory.length - 1;
 
@@ -864,7 +971,8 @@ function onDrop(source, target){
   state.moveCursor++;
   state.solving = false;
   setDragEnabled(false);
-  setStatus('Correct!', 'correct');
+  toast('Correct!');
+  updateMoveDisplay('correct');
   renderMoveList();
   updateMoveCounter();
   updateNavButtons();
@@ -874,18 +982,33 @@ function onDrop(source, target){
   }else{
     setTimeout(playNextAutoMove, CONFIG.AUTO_MOVE_DELAY);
   }
-  // Returning undefined (not 'snapback') tells chessboard.js the move is accepted
-  // and it will animate the piece itself; we still resync via onSnapEnd.
+  return 'accepted';
+}
+
+/* ---- drag & drop handlers ---- */
+function onDragStart(source, piece){
+  if(!canSelect(source)) return false;
+  highlightLegalMoves(source);
+  return true;
+}
+
+function onDrop(source, target){
+  clearHighlights();
+  const outcome = attemptSolvingMove(source, target);
+  // chessboard.js expects 'snapback' to reject the drop, or undefined to accept
+  // and animate the piece into place itself (we resync via onSnapEnd either way).
+  return outcome === 'accepted' ? undefined : 'snapback';
 }
 function onSnapEnd(){
   // Always resync to whatever fen the live game (or current review index) holds,
   // since chessboard.js's own internal position can drift from chess.js otherwise.
-  const fen = state.fenHistory[state.viewIndex] || state.chess.fen();
-  state.board.position(fen, false);
+  const fen = state.fenHistory[state.viewIndex] || (state.chess && state.chess.fen());
+  if(fen) state.board.position(fen, false);
 }
 
 function playNextAutoMove(){
   if(!state.currentPuzzle || state.moveCursor >= state.currentPuzzle.moves.length) return;
+  clearHighlights();
   applyMoveToBoard(state.currentPuzzle.moves[state.moveCursor]);
   state.moveCursor++;
   updateMoveCounter();
@@ -907,9 +1030,11 @@ function flashSquare(square, cls){
 }
 
 function finishPuzzle(){
-  setStatus('Puzzle solved! 🎉', 'correct');
+  toast('Puzzle solved! 🎉');
+  updateMoveDisplay('correct');
   sfx.success();
   setDragEnabled(false);
+  clearHighlights();
   const elapsed = Date.now() - state.puzzleStartTime;
   recordSolve(state.currentPiece, state.currentPuzzle.rating, elapsed);
   addToRecents(state.currentPiece, state.currentPuzzle);
@@ -983,9 +1108,11 @@ function jumpToFenIndex(idx){
   if(!state.fenHistory.length) return;
   idx = Math.max(0, Math.min(idx, state.fenHistory.length - 1));
   state.viewIndex = idx;
+  clearHighlights();
   state.board.position(state.fenHistory[idx], false);
   renderMoveList();
   updateNavButtons();
+  updateMoveDisplay();
   // Disable dragging while reviewing a past position; resuming play requires "latest".
   setDragEnabled(idx === state.fenHistory.length - 1 && state.solving);
 }
@@ -1010,6 +1137,7 @@ document.getElementById('btnUndo').addEventListener('click', ()=>{
   state.fenHistory.pop();
   state.moveCursor--;
   state.viewIndex = state.fenHistory.length - 1;
+  clearHighlights();
   state.board.position(state.fenHistory[state.viewIndex], false);
   state.solving = true;
   setDragEnabled(true);
@@ -1017,6 +1145,7 @@ document.getElementById('btnUndo').addEventListener('click', ()=>{
   renderMoveList();
   updateMoveCounter();
   updateNavButtons();
+  updateMoveDisplay();
 });
 
 /* ============================================================
@@ -1026,6 +1155,7 @@ document.getElementById('btnHint').addEventListener('click', ()=>{
   if(!state.solving || !state.currentPuzzle) return toast('No active puzzle to hint.');
   if(state.viewIndex !== state.fenHistory.length - 1){ toast('Jump back to the latest move first.'); return; }
   const expected = parseUCI(state.currentPuzzle.moves[state.moveCursor]);
+  clearHighlights();
   flashSquare(expected.from, 'sq-hint');
   setStatus('Hint: look at the highlighted square.', 'info');
 });
@@ -1034,6 +1164,7 @@ document.getElementById('btnSolution').addEventListener('click', ()=>{
   if(!state.currentPuzzle) return;
   state.solving = false;
   setDragEnabled(false);
+  clearHighlights();
   breakStreak();
   jumpToFenIndex(state.fenHistory.length - 1);
   setStatus('Playing full solution…', 'info');
@@ -1063,12 +1194,21 @@ document.getElementById('btnResign').addEventListener('click', ()=>{
   setStatus('Resigned. Here is the solution:', 'wrong');
   state.solving = false;
   setDragEnabled(false);
+  clearHighlights();
   jumpToFenIndex(state.fenHistory.length - 1);
   playOutSolutionFromCursor();
 });
 document.getElementById('btnFlip').addEventListener('click', ()=>{
   state.board.flip();
   state.boardOrientation = state.boardOrientation === 'white' ? 'black' : 'white';
+});
+document.getElementById('btnTogglePanel').addEventListener('click', ()=>{
+  const panel = document.querySelector('.side-panel');
+  const btn = document.getElementById('btnTogglePanel');
+  const nowHidden = panel.classList.toggle('hidden');
+  btn.textContent = nowHidden ? '👁' : '🙈';
+  btn.title = nowHidden ? 'Show info panel' : 'Hide info panel';
+  if(state.board) setTimeout(()=>state.board.resize(), 60);
 });
 document.getElementById('btnFavorite').addEventListener('click', toggleFavorite);
 function toggleFavorite(){
@@ -1085,6 +1225,132 @@ function updateFavoriteButton(){
   const isFav = state.favorites.some(f=>f.puzzle.puzzleId === id);
   document.getElementById('btnFavorite').textContent = isFav ? '★' : '☆';
 }
+
+/* ============================================================
+   STOCKFISH ENGINE — analysis + "continue with Stockfish"
+   ============================================================
+   Stockfish's worker script lives on a different origin (cdnjs), and
+   classic Web Workers can't be constructed directly from a cross-origin
+   URL. The standard workaround is a tiny same-origin blob that does
+   nothing but importScripts() the real engine — importScripts (unlike
+   `new Worker(url)`) is allowed to load cross-origin, same as a <script>
+   tag would be.
+*/
+function initStockfish(){
+  if(state.sf) return state.sf;
+  try{
+    const bootstrap = `importScripts('${CONFIG.STOCKFISH_URL}');`;
+    const blobUrl = URL.createObjectURL(new Blob([bootstrap], {type:'application/javascript'}));
+    const worker = new Worker(blobUrl);
+    worker.onmessage = (e)=> handleEngineLine(typeof e.data === 'string' ? e.data : '');
+    worker.onerror = ()=>{
+      toast('Engine unavailable — check your connection.');
+      state.sf = null;
+    };
+    worker.postMessage('uci');
+    state.sf = worker;
+  }catch(err){
+    console.error('Stockfish failed to load', err);
+    toast('Engine unavailable — check your connection.');
+    state.sf = null;
+  }
+  return state.sf;
+}
+
+function handleEngineLine(line){
+  if(!line) return;
+  if(line.startsWith('info') && line.includes(' pv ')){
+    const cpMatch = line.match(/score cp (-?\d+)/);
+    const mateMatch = line.match(/score mate (-?\d+)/);
+    const depthMatch = line.match(/\bdepth (\d+)/);
+    const pvMatch = line.match(/ pv (.+)$/);
+    state.sfBestLine = {
+      cp: cpMatch ? parseInt(cpMatch[1], 10) : null,
+      mate: mateMatch ? parseInt(mateMatch[1], 10) : null,
+      depth: depthMatch ? parseInt(depthMatch[1], 10) : null,
+      pv: pvMatch ? pvMatch[1].trim().split(' ') : []
+    };
+    renderEnginePanel();
+  }else if(line.startsWith('bestmove')){
+    const best = line.split(' ')[1];
+    const wasContinueMode = state.sfMode === 'continue';
+    state.sfMode = null;
+    document.getElementById('btnStockfishAnalyze').disabled = false;
+    document.getElementById('btnStockfishGo').disabled = false;
+    if(wasContinueMode && best && best !== '(none)') playFreeMove(best);
+  }
+}
+
+function renderEnginePanel(){
+  const evalEl = document.getElementById('engineEval');
+  const bestEl = document.getElementById('engineBest');
+  const depthEl = document.getElementById('engineDepth');
+  const line = state.sfBestLine || {};
+  if(line.mate != null){
+    evalEl.textContent = '#' + line.mate;
+  }else if(line.cp != null){
+    // UCI score is relative to the side to move; normalize to White's perspective.
+    const turn = state.chess ? state.chess.turn() : 'w';
+    const whiteCp = turn === 'w' ? line.cp : -line.cp;
+    evalEl.textContent = (whiteCp >= 0 ? '+' : '') + (whiteCp / 100).toFixed(2);
+  }else{
+    evalEl.textContent = '—';
+  }
+  depthEl.textContent = line.depth ?? '—';
+  if(line.pv && line.pv.length && state.fenHistory.length){
+    try{
+      const tmp = new Chess(state.fenHistory[state.viewIndex]);
+      const mv = parseUCI(line.pv[0]);
+      const res = tmp.move(mv);
+      bestEl.textContent = res ? res.san : line.pv[0];
+    }catch(e){ bestEl.textContent = line.pv[0]; }
+  }else{
+    bestEl.textContent = '—';
+  }
+}
+
+function playFreeMove(uciStr){
+  if(!state.chess) return;
+  const mv = parseUCI(uciStr);
+  const result = state.chess.move(mv);
+  if(!result) return;
+  state.fenHistory.push(state.chess.fen());
+  state.viewIndex = state.fenHistory.length - 1;
+  clearHighlights();
+  state.board.position(state.chess.fen());
+  sfx.move();
+  renderMoveList();
+  updateMoveDisplay();
+  updateNavButtons();
+  toast('Stockfish played ' + result.san);
+}
+
+document.getElementById('btnStockfishAnalyze').addEventListener('click', ()=>{
+  if(!state.fenHistory.length) return toast('Load a puzzle first.');
+  const w = initStockfish();
+  if(!w) return;
+  state.sfMode = 'analyze';
+  state.sfBestLine = {};
+  renderEnginePanel();
+  document.getElementById('btnStockfishAnalyze').disabled = true;
+  w.postMessage('stop');
+  w.postMessage('position fen ' + state.fenHistory[state.viewIndex]);
+  w.postMessage('go depth ' + CONFIG.ENGINE_DEPTH);
+});
+
+document.getElementById('btnStockfishGo').addEventListener('click', ()=>{
+  if(!state.chess) return toast('Load a puzzle first.');
+  if(state.viewIndex !== state.fenHistory.length - 1){ toast('Jump back to the latest move first.'); return; }
+  const w = initStockfish();
+  if(!w) return;
+  state.solving = false; // engine is taking this move, not the puzzle line
+  setDragEnabled(false);
+  state.sfMode = 'continue';
+  document.getElementById('btnStockfishGo').disabled = true;
+  w.postMessage('stop');
+  w.postMessage('position fen ' + state.chess.fen());
+  w.postMessage('go depth ' + CONFIG.ENGINE_DEPTH);
+});
 
 document.getElementById('btnCopyFen').addEventListener('click', async ()=>{
   if(!state.fenHistory.length) return;
