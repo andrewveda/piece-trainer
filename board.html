@@ -443,6 +443,104 @@ body{
   }
 
 }
+     /* ===========================================
+   Desktop: move board controls to the left
+   =========================================== */
+
+@media (min-width:900px){
+
+  .trainer-wrap{
+    grid-template-columns:90px minmax(0,1fr) 320px;
+    grid-template-areas:
+      "controls board side";
+    align-items:center;
+  }
+
+  .board-col{
+    grid-area:board;
+
+    display:grid;
+    grid-template-columns:70px auto;
+    grid-template-areas:
+      "controls board"
+      "controls actions";
+
+    column-gap:18px;
+    align-items:center;
+  }
+
+  .board-shell{
+    grid-area:board;
+  }
+
+  .action-row{
+    grid-area:actions;
+  }
+
+  /* Left control strip */
+
+  .board-toolbar,
+  .nav-row{
+
+    grid-area:controls;
+
+    width:60px;
+    max-width:none;
+
+    margin:0;
+
+    display:flex;
+    flex-direction:column;
+
+    justify-content:center;
+
+    align-items:center;
+
+    gap:10px;
+
+  }
+
+  .board-toolbar{
+
+    order:1;
+
+  }
+
+  .nav-row{
+
+    order:2;
+
+    margin-top:18px;
+
+  }
+
+  .board-toolbar .status-bar{
+
+    writing-mode:vertical-rl;
+
+    transform:rotate(180deg);
+
+    width:auto;
+
+    min-height:170px;
+
+    text-align:center;
+
+    margin:8px 0;
+
+    font-size:14px;
+
+  }
+
+  .board-toolbar .icon-btn,
+  .nav-row .icon-btn{
+
+    width:48px;
+    height:48px;
+
+  }
+
+}
 </style>
 </head>
 <body>
