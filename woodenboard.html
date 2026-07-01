@@ -595,7 +595,7 @@ h1, h2, h3 {
 .piece-stat-row .pct { font-size: 12px; color: var(--text-dim); width: 42px; text-align: right; }
 
 .simple-screen { max-width: 600px; margin: 0 auto; padding: 16px; }
-.settings-row glass { display: flex; justify-content: space-between; align-items: center; padding: 16px; margin-bottom: 10px; }
+.settings-row { display: flex; justify-content: space-between; align-items: center; padding: 16px; margin-bottom: 10px; }
 .settings-row .lbl { font-size: 14px; }
 .settings-row .sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
 
@@ -861,7 +861,7 @@ h1, h2, h3 {
 <section id="screen-home" class="screen active">
   <div class="home-header">
     <h1>Chess Piece Trainer</h1>
-    <p>Master tactical patterns one piece at a time.</p>
+    <p>Drilling <span id="globalCount" style="color:var(--gold-soft);font-weight:600;">...</span> verified Turso database tactical lines.</p>
   </div>
 
   <div class="piece-grid" id="pieceGrid"><!-- piece cards injected by JS --></div>
@@ -876,8 +876,7 @@ h1, h2, h3 {
 
   <div class="section-label">Quick Start</div>
   <div class="quick-row">
-    <div class="chip glass" id="chipRandom">🎲 Random Piece</div>
-    <div class="chip glass" id="chipDaily">📅 Daily Puzzle</div>
+    <div class="chip glass" id="chipRandom">🎲 Random Puzzle</div>
     <div class="chip glass" id="chipFav">⭐ Favorites</div>
     <div class="chip glass" id="chipRecent">🕘 Recent</div>
   </div>
@@ -924,12 +923,9 @@ h1, h2, h3 {
     <div class="side-panel">
       <div class="info-card glass panel-hidden">
         <h3>Puzzle Info</h3>
-        <div class="info-row"><span>Piece</span><span class="v" id="infoPiece">—</span></div>
         <div class="info-row"><span>Rating</span><span class="v" id="infoRating">—</span></div>
-        <div class="info-row"><span>Popularity</span><span class="v" id="infoPopularity">—</span></div>
-        <div class="info-row"><span>Times Played</span><span class="v" id="infoPlays">—</span></div>
         <div class="info-row"><span>Puzzle ID</span><span class="v" id="infoId">—</span></div>
-        <div class="info-row"><span>Move</span><span class="v" id="infoMoveCount">—</span></div>
+        <div class="info-row"><span>Source Line</span><span class="v" id="infoMoveCount">—</span></div>
         <div class="info-row"><span>Session Solved</span><span class="v" id="infoSession">0</span></div>
       </div>
       <div class="info-card glass">
@@ -946,14 +942,6 @@ h1, h2, h3 {
         <div class="mini-actions">
           <button class="btn" id="btnStockfishGo">▶ Continue with Stockfish</button>
         </div>
-      </div>
-      <div class="info-card glass panel-hidden">
-        <h3>Themes</h3>
-        <div id="infoThemes">—</div>
-      </div>
-      <div class="info-card glass panel-hidden">
-        <h3>Opening</h3>
-        <div id="infoOpening" style="font-size:13px;color:var(--text-dim);">—</div>
       </div>
       <div class="info-card glass">
         <h3>Notation</h3>
@@ -978,11 +966,10 @@ h1, h2, h3 {
     <div class="stat-card glass"><div class="big" id="stStreak">0</div><div class="lbl">Current Streak</div></div>
     <div class="stat-card glass"><div class="big" id="stBest">0</div><div class="lbl">Best Streak</div></div>
     <div class="stat-card glass"><div class="big" id="stAvgRating">—</div><div class="lbl">Avg Rating</div></div>
-    <div class="stat-card glass"><div class="big" id="stDaily">0</div><div class="lbl">Solved Today</div></div>
     <div class="stat-card glass"><div class="big" id="stTime">0m</div><div class="lbl">Total Time</div></div>
     <div class="stat-card glass"><div class="big" id="stAttempts">0</div><div class="lbl">Attempts</div></div>
   </div>
-  <div class="section-label">Per-Piece Accuracy</div>
+  <div class="section-label">Per-Piece Target Accuracy</div>
   <div class="piece-stats" id="pieceStatsList"></div>
   <div style="text-align:center;padding-bottom:20px;">
     <button class="btn danger" id="btnResetStats">Reset Statistics</button>
@@ -1048,9 +1035,9 @@ h1, h2, h3 {
     <div class="topbar" style="padding:2px 0 4px;"><h2>About</h2></div>
     <div class="about-card glass">
       <h3>Chess Piece Trainer</h3>
-      <p>A focused tactics trainer that lets you drill puzzles by the piece that delivers the winning move — pawns, knights, bishops, rooks, queens, and kings each have their own pattern language. Pick a piece, solve the first move, and watch the combination play out.</p>
-      <p>Puzzles are fetched live from a Cloudflare Worker powered by a Turso SQL database, query-filtered instantly on the fly.</p>
-      <p>Built with vanilla HTML, CSS and JavaScript, plus chess.js and chessboard.js. No frameworks, no build step — runs entirely on GitHub Pages.</p>
+      <p>A focused tactics trainer that lets you drill puzzles by target combinations. Pick a visual archetype, evaluate structural openings, solve the first move, and let combinations carry through automatically.</p>
+      <p>Tactical sequences are parsed and served dynamically from an optimized Turso SQL cloud pool database using edge routing via Cloudflare pipeline workers.</p>
+      <p>Built with vanilla HTML, CSS and JavaScript, plus chess.js and chessboard.js. No complex frameworks, no bloated dependencies.</p>
       <p style="margin-top:10px;">Keyboard shortcuts: <strong>←</strong> / <strong>→</strong> step through moves, <strong>H</strong> hint, <strong>N</strong> next puzzle.</p>
     </div>
   </div>
@@ -1076,7 +1063,6 @@ h1, h2, h3 {
    ============================================================ */
 const CONFIG = {
   API_BASE: 'https://knight-trainer.andrewveda.workers.dev',
-  CACHE_LIMIT: 24,
   AUTO_MOVE_DELAY: 480,
   AUTO_ADVANCE_DELAY: 1400,
   STOCKFISH_URL: 'https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js',
@@ -1096,19 +1082,19 @@ const PIECES = [
    STATE
    ============================================================ */
 const state = {
-  cache: new Map(),
-  pieceIndexCache: new Map(),
-  masterIndex: null,
+  puzzlePool: [],           // Pre-fetched puzzle array buffer from POST /batch
+  lastMinRating: null,
+  lastMaxRating: null,
   currentPiece: null,
   currentPuzzle: null,
-  chess: null,            // chess.js instance reflecting the *live* (latest) position
+  chess: null,            
   board: null,
   boardResizeWired: false,
-  solving: false,          // true while it is the user's turn to find the solving move
-  moveCursor: 0,            // index into puzzle.moves the live game has reached
-  fenHistory: [],           // fen snapshot after each ply played (index 0 = puzzle start fen)
-  sanHistory: [],           // SAN history tracking across manual/branching modes
-  viewIndex: 0,             // which FEN index is displayed
+  solving: false,          
+  moveCursor: 0,            
+  fenHistory: [],           
+  sanHistory: [],           
+  viewIndex: 0,             
   boardOrientation: 'white',
   puzzleStartTime: null,
   sessionSolved: 0,
@@ -1118,12 +1104,12 @@ const state = {
   stats: loadStats(),
   favorites: loadJSON('cpt_favorites', []),
   recents: loadJSON('cpt_recents', []),
-  selectedSquare: null,     // square clicked to start a click-to-move sequence
-  legalTargets: [],         // legal destination targets for selections
-  sf: null,                 // Stockfish engine worker instance
-  sfMode: null,             // current stockfish action tracking string
-  sfBestLine: {},           // engine performance line readout structure
-  analysisMode: false,      // toggles free legal board play options
+  selectedSquare: null,     
+  legalTargets: [],         
+  sf: null,                 
+  sfMode: null,             
+  sfBestLine: {},           
+  analysisMode: false,      
 };
 
 /* ============================================================
@@ -1134,7 +1120,7 @@ function loadJSON(key, fallback){
   catch(e){ return fallback; }
 }
 function saveJSON(key, val){
-  try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){/* storage full / unavailable */}
+  try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){/* full */}
 }
 function loadSettings(){
   return loadJSON('cpt_settings', {
@@ -1156,80 +1142,93 @@ function loadStats(){
 function saveStats(){ saveJSON('cpt_stats', state.stats); }
 
 /* ============================================================
-   NETWORKING — Native Async API Queries via Cloudflare Worker
+   TURSO / CLOUDFLARE PIPELINE RESPONSE NORMALIZATION
    ============================================================ */
-async function fetchJSONCached(url){
-  if(state.cache.has(url)) return state.cache.get(url);
-  const res = await fetch(url);
-  if(!res.ok) throw new Error('Failed to fetch ' + url + ' (' + res.status + ')');
-  const data = await res.json();
-  if(state.cache.size >= CONFIG.CACHE_LIMIT){
-    const oldestKey = state.cache.keys().next().value;
-    state.cache.delete(oldestKey);
+function parseTursoResponse(data) {
+  try {
+    if (!data || !data.results || !data.results[0] || !data.results[0].response) return [];
+    const result = data.results[0].response.result;
+    if (!result || !result.columns || !result.rows) return [];
+    
+    const columns = result.columns;
+    return result.rows.map(row => {
+      const obj = {};
+      row.forEach((cell, idx) => {
+        obj[columns[idx]] = (cell && typeof cell === 'object' && 'value' in cell) ? cell.value : cell;
+      });
+      return obj;
+    });
+  } catch (e) {
+    console.error("Error parsing native pipeline response layout:", e);
+    return [];
   }
-  state.cache.set(url, data);
-  return data;
 }
 
-async function getPieceMeta(piece){
-  if(state.pieceIndexCache.has(piece))
-    return state.pieceIndexCache.get(piece);
-
-  const data = await fetchJSONCached(`${CONFIG.API_BASE}/meta?piece=${piece}`);
-  state.pieceIndexCache.set(piece, data);
-  return data;
-}
-
-async function getRandomPuzzleForPiece(piece){
-
+/* ============================================================
+   NETWORKING LAYER — Integrated with Turso / Cloudflare API
+   ============================================================ */
+async function fetchPuzzlesBatch() {
+  const min = state.difficultyMin === 0 ? 600 : state.difficultyMin;
+  const max = state.difficultyMax === 9999 ? 3000 : state.difficultyMax;
+  
   const res = await fetch(`${CONFIG.API_BASE}/batch`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      minRating: state.difficultyMin,
-      maxRating: state.difficultyMax,
-      count: 100
+      minRating: min,
+      maxRating: max,
+      count: 50
     })
   });
-
+  if (!res.ok) throw new Error('Worker communication failure');
   const data = await res.json();
-
-  const rows =
-    data.results?.[0]?.response?.result?.rows || [];
-
-  const puzzles = rows.filter(p => {
-    const move = (p.moves || "").split(" ")[1];
-    if (!move) return false;
-
-    const chess = new Chess(p.fen);
-    chess.move(parseUCI(move));
-
-    const played = chess.history({ verbose: true }).pop();
-    if (!played) return false;
-
-    const map = {
-      p: "pawn",
-      n: "knight",
-      b: "bishop",
-      r: "rook",
-      q: "queen",
-      k: "king"
-    };
-
-    return map[played.piece] === piece;
-  });
-
-  if (!puzzles.length)
-    throw new Error("No puzzles found.");
-
-  const p = puzzles[Math.floor(Math.random() * puzzles.length)];
-
-  p.moves = p.moves.split(" ");
-
-  return p;
+  return parseTursoResponse(data);
 }
+
+async function getNextPuzzleFromPool() {
+  if (!state.puzzlePool || state.puzzlePool.length === 0 || 
+      state.lastMinRating !== state.difficultyMin || state.lastMaxRating !== state.difficultyMax) {
+    
+    state.puzzlePool = await fetchPuzzlesBatch();
+    state.lastMinRating = state.difficultyMin;
+    state.lastMaxRating = state.difficultyMax;
+  }
+  
+  if (!state.puzzlePool || state.puzzlePool.length === 0) {
+    throw new Error('No items matched criteria in target database batch pool.');
+  }
+  
+  const rawPuzzle = state.puzzlePool.pop();
+  
+  // Format split processing protection for standard text strings vs arrays
+  let moveList = rawPuzzle.moves;
+  if (typeof moveList === 'string') {
+    moveList = moveList.trim().split(/\s+/);
+  }
+  
+  return {
+    puzzleId: rawPuzzle.puzzleId,
+    fen: rawPuzzle.fen,
+    moves: moveList,
+    rating: typeof rawPuzzle.rating === 'number' ? rawPuzzle.rating : parseInt(rawPuzzle.rating, 10),
+    gameUrl: rawPuzzle.gameUrl
+  };
+}
+
+async function updateGlobalStatsCount() {
+  try {
+    const res = await fetch(`${CONFIG.API_BASE}/stats`);
+    const data = await res.json();
+    const rows = parseTursoResponse(data);
+    if (rows && rows[0]) {
+      const total = rows[0].total ?? rows[0]['COUNT(*)'] ?? 0;
+      document.getElementById('globalCount').textContent = Number(total).toLocaleString();
+    }
+  } catch(e) {
+    document.getElementById('globalCount').textContent = "Active";
+  }
+}
+
 /* ============================================================
    UCI MOVE PARSING
    ============================================================ */
@@ -1256,7 +1255,7 @@ function beep(freq, duration, type='sine'){
     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
     osc.connect(gain); gain.connect(audioCtx.destination);
     osc.start(); osc.stop(audioCtx.currentTime + duration);
-  }catch(e){/* audio unavailable */}
+  }catch(e){}
 }
 const sfx = {
   move: ()=>beep(420,0.08),
@@ -1311,14 +1310,10 @@ function renderPieceGrid(){
       <span class="glyph">${p.glyph}</span>
       <div class="pname">${p.name}</div>
       <div class="pdesc">${p.desc}</div>
-      <div class="pcount" id="count-${p.key}">…</div>
+      <div class="pcount" style="margin-top:8px;font-size:11px;color:var(--gold-soft);">Database Linked</div>
     `;
     card.addEventListener('click', (e)=>{ ripple(card,e); startTraining(p.key); });
     grid.appendChild(card);
-    getPieceMeta(p.key).then(data=>{
-      document.getElementById('count-' + p.key).textContent =
-          (data.totalPuzzles || 0).toLocaleString() + " puzzles";
-    }).catch(()=>{ document.getElementById('count-' + p.key).textContent = 'online'; });
   });
 }
 function ripple(el, evt){
@@ -1347,7 +1342,6 @@ document.getElementById('chipRandom').addEventListener('click', ()=>{
   const p = PIECES[Math.floor(Math.random()*PIECES.length)];
   startTraining(p.key);
 });
-document.getElementById('chipDaily').addEventListener('click', startDailyPuzzle);
 document.getElementById('chipFav').addEventListener('click', ()=>{
   if(!state.favorites.length){ toast('No favorites yet — star a puzzle while solving it.'); return; }
   const fav = state.favorites[Math.floor(Math.random()*state.favorites.length)];
@@ -1409,35 +1403,14 @@ async function startTraining(pieceKey, presetPuzzle){
   initBoardIfNeeded();
   state.currentPiece = pieceKey;
   document.getElementById('trainerTitle').textContent = capitalize(pieceKey) + ' Trainer';
-  setStatus('Fetching puzzle…', 'info');
+  setStatus('Connecting to Turso Cloud…', 'info');
   document.getElementById('loadingOverlay').classList.remove('hidden');
   setDragEnabled(false);
   try{
-    const puzzle = presetPuzzle || await getRandomPuzzleForPiece(pieceKey);
+    const puzzle = presetPuzzle || await getNextPuzzleFromPool();
     loadPuzzle(pieceKey, puzzle);
   }catch(err){
-    setStatus('Could not load puzzle — check your connection.', 'wrong');
-    console.error(err);
-  }finally{
-    document.getElementById('loadingOverlay').classList.add('hidden');
-  }
-}
-
-async function startDailyPuzzle(){
-  const today = new Date().toISOString().slice(0,10);
-  showScreen('trainer');
-  initBoardIfNeeded();
-  setStatus('Fetching daily puzzle…', 'info');
-  document.getElementById('loadingOverlay').classList.remove('hidden');
-  setDragEnabled(false);
-  try{
-    const url = `${CONFIG.API_BASE}/daily?date=${today}`;
-    const puzzle = await fetchJSONCached(url);
-    if(!puzzle || !puzzle.fen) throw new Error('No daily puzzle package returned.');
-    document.getElementById('trainerTitle').textContent = 'Daily Puzzle';
-    loadPuzzle(puzzle.piece || 'pawn', puzzle);
-  }catch(err){
-    setStatus('Could not load daily puzzle.', 'wrong');
+    setStatus('Connection timed out — verify endpoints.', 'wrong');
     console.error(err);
   }finally{
     document.getElementById('loadingOverlay').classList.add('hidden');
@@ -1464,7 +1437,7 @@ function loadPuzzle(pieceKey, puzzle){
   state.board.orientation(state.boardOrientation);
   state.board.position(puzzle.fen, false);
 
-  renderPuzzleInfo(pieceKey, puzzle);
+  renderPuzzleInfo(puzzle);
   renderMoveList();
   updateFavoriteButton();
   updateNavButtons();
@@ -1477,21 +1450,14 @@ function loadPuzzle(pieceKey, puzzle){
     state.moveCursor = 1;
     state.solving = true;
     setDragEnabled(true);
-    toast('Your move — find the best continuation.');
+    toast('Your move — find the continuation.');
   }, 600);
 }
 
-function renderPuzzleInfo(pieceKey, puzzle){
-  document.getElementById('infoPiece').textContent = capitalize(pieceKey);
+function renderPuzzleInfo(puzzle){
   document.getElementById('infoRating').textContent = puzzle.rating ?? '—';
-  document.getElementById('infoPopularity').textContent = (puzzle.popularity ?? '—') + (puzzle.popularity!=null?'%':'');
-  document.getElementById('infoPlays').textContent = puzzle.nbPlays ?? '—';
   document.getElementById('infoId').textContent = puzzle.puzzleId ?? '—';
   document.getElementById('infoSession').textContent = state.sessionSolved;
-  const themesEl = document.getElementById('infoThemes');
-  themesEl.innerHTML = (puzzle.themes||[]).map(t=>`<span class="theme-tag">${t}</span>`).join('') || '—';
-  const opEl = document.getElementById('infoOpening');
-  opEl.textContent = (puzzle.openingTags && puzzle.openingTags.length) ? puzzle.openingTags.join(', ') : 'No opening tag';
 }
 function updateMoveCounter(){
   const total = state.currentPuzzle ? state.currentPuzzle.moves.length : 0;
@@ -1521,7 +1487,7 @@ function updateMoveDisplay(flashClass){
   clearBoardArrows();
   const el = document.getElementById('statusBar');
   if(!state.chess || !state.fenHistory.length){
-    el.textContent = 'Choose a piece to begin';
+    el.textContent = 'Choose a parameters target';
     el.className = 'status-bar info';
     return;
   }
@@ -1582,7 +1548,7 @@ function highlightLegalMoves(square){
 function canSelect(square){
   if(!state.fenHistory.length || !state.dragEnabled) return false;
   if(state.analysisMode){
-    // Allow standard interactions globally during analysis states
+    // standard interaction parameters enabled globally
   }else{
     if(state.viewIndex !== state.fenHistory.length - 1) return false;
     if(!(state.solving && state.currentPuzzle)) return false;
@@ -1796,9 +1762,6 @@ function recordSolve(piece, rating, elapsedMs){
   s.bestStreak = Math.max(s.bestStreak, s.currentStreak);
   if(typeof rating === 'number'){ s.ratingSum += rating; s.ratingCount++; }
   s.totalTimeMs += elapsedMs;
-  const today = new Date().toISOString().slice(0,10);
-  if(s.dailyDate !== today){ s.dailyDate = today; s.dailyCount = 0; }
-  s.dailyCount++;
   if(s.perPiece[piece]) s.perPiece[piece].solved++;
   saveStats();
 }
@@ -1920,7 +1883,7 @@ document.getElementById('toggleAnalysis').addEventListener('click', ()=>{
   }else{
     setDragEnabled(state.solving);
     if(state.currentPuzzle && !state.solving && state.moveCursor < state.currentPuzzle.moves.length){
-      toast('Analysis mode off — tap ⟲ Reset to keep solving this puzzle.');
+      toast('Analysis mode off — tap ⟲ Reset to keep solving.');
     }else{
       toast('Analysis mode off.');
     }
@@ -2002,14 +1965,14 @@ function initStockfish(){
     const worker = new Worker(blobUrl);
     worker.onmessage = (e)=> handleEngineLine(typeof e.data === 'string' ? e.data : '');
     worker.onerror = ()=>{
-      toast('Engine unavailable — check your connection.');
+      toast('Engine unavailable — check connection.');
       state.sf = null;
     };
     worker.postMessage('uci');
     state.sf = worker;
   }catch(err){
     console.error('Stockfish failed to load', err);
-    toast('Engine unavailable — check your connection.');
+    toast('Engine unavailable.');
     state.sf = null;
   }
   return state.sf;
@@ -2175,8 +2138,6 @@ function renderStats(){
   document.getElementById('stStreak').textContent = s.currentStreak;
   document.getElementById('stBest').textContent = s.bestStreak;
   document.getElementById('stAvgRating').textContent = s.ratingCount ? Math.round(s.ratingSum / s.ratingCount) : '—';
-  const today = new Date().toISOString().slice(0,10);
-  document.getElementById('stDaily').textContent = (s.dailyDate === today) ? s.dailyCount : 0;
   document.getElementById('stTime').textContent = Math.round(s.totalTimeMs / 60000) + 'm';
   document.getElementById('stAttempts').textContent = s.totalAttempts;
 
@@ -2269,6 +2230,7 @@ async function init(){
   renderPieceGrid();
   applyBoardColor();
   updateNavButtons();
+  updateGlobalStatsCount();
 
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').catch(()=>{});
