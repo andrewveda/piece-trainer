@@ -210,80 +210,150 @@ body{
   overflow:hidden;
   padding-bottom:78px;
 }
-     /* ==========================================================
-   DESKTOP LAYOUT (Minimal UI / Large Board)
-   ========================================================== */
+     /*==========================================================
+  DESKTOP - TRUE RESPONSIVE LAYOUT
+==========================================================*/
 
 @media (min-width:900px){
 
-    /* Remove wasted bottom space */
     body{
         padding-bottom:0;
     }
 
-    /* Hide trainer header */
+    /* Remove mobile header */
     #screen-trainer .topbar{
         display:none;
     }
 
-    /* Make the board the star */
-    .board-shell,
+    /* Main layout */
+    .trainer-wrap{
+
+        display:grid;
+
+        grid-template-columns:
+            minmax(0,1fr)
+            320px;
+
+        gap:42px;
+
+        align-items:center;
+
+        justify-content:center;
+
+        width:100%;
+
+        height:100vh;
+
+        padding:24px 60px 24px 210px;
+
+        box-sizing:border-box;
+
+    }
+
+    .board-col{
+
+        display:flex;
+
+        flex-direction:column;
+
+        align-items:center;
+
+        justify-content:center;
+
+    }
+
+    /*
+        The magic.
+
+        Board size is limited BOTH by viewport height
+        and by remaining width.
+
+        It will NEVER overflow.
+    */
+
+    .board-shell{
+
+        width:min(
+
+            calc(100vh - 120px),
+
+            calc(100vw - 650px)
+
+        );
+
+        max-width:none;
+
+        margin:0;
+
+    }
+
+    #board{
+
+        width:100%;
+
+    }
+
     .board-toolbar,
     .status-bar,
     .nav-row,
     .action-row{
-        max-width:720px;
-    }
 
-    /* Give the board more room */
-    .trainer-wrap{
-        max-width:1500px;
-        padding:24px 36px;
-        align-items:flex-start;
-        gap:36px;
-    }
+        width:100%;
 
-    .board-col{
-        flex:1;
+        max-width:none;
+
     }
 
     .side-panel{
-        flex:0 0 320px;
+
+        width:320px;
+
+        max-width:320px;
+
         margin:0;
+
+        align-self:center;
+
     }
 
-    /* Turn bottom navigation into floating desktop sidebar */
+    /* Desktop navigation */
+
     .bottom-nav{
 
         position:fixed;
 
-        top:50%;
-        right:24px;
+        left:28px;
 
-        left:auto;
-        bottom:auto;
+        top:50%;
 
         transform:translateY(-50%);
 
-        width:auto;
+        right:auto;
+
+        bottom:auto;
+
+        width:150px;
 
         display:flex;
+
         flex-direction:column;
 
-        gap:10px;
+        gap:6px;
 
-        padding:12px;
+        padding:8px;
 
-        border-radius:18px;
+        border-radius:16px;
 
-        border:1px solid var(--panel-border);
+        background:rgba(12,15,22,.65);
 
-        background:rgba(11,14,20,.82);
+        backdrop-filter:blur(22px);
 
-        backdrop-filter:blur(18px);
-        -webkit-backdrop-filter:blur(18px);
+        border:1px solid rgba(255,255,255,.06);
 
-        justify-content:flex-start;
+        box-shadow:0 12px 36px rgba(0,0,0,.25);
+
+        z-index:100;
+
     }
 
     .nav-btn{
@@ -292,32 +362,24 @@ body{
 
         justify-content:flex-start;
 
-        gap:10px;
+        gap:12px;
 
-        padding:10px 16px;
+        padding:10px 14px;
+
+        border-radius:10px;
 
         font-size:13px;
 
-        min-width:150px;
-
-        border-radius:12px;
     }
 
     .nav-btn .ic{
+
+        width:18px;
+
+        text-align:center;
+
         font-size:18px;
-    }
 
-    /* More breathing room */
-    .status-bar{
-        margin-bottom:14px;
-    }
-
-    .nav-row{
-        margin-top:14px;
-    }
-
-    .action-row{
-        margin-top:18px;
     }
 
 }
