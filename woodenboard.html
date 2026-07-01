@@ -1181,12 +1181,55 @@ async function getPieceMeta(piece){
 }
 
 async function getRandomPuzzleForPiece(piece){
-  const url = `${CONFIG.API_BASE}/puzzle?piece=${piece}&min=${state.difficultyMin}&max=${state.difficultyMax}`;
-  const puzzle = await fetchJSONCached(url);
-  if(!puzzle || !puzzle.fen) throw new Error('No puzzles found matching constraints.');
-  return puzzle;
-}
 
+  const res = await fetch(`${CONFIG.API_BASE}/batch`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      minRating: state.difficultyMin,
+      maxRating: state.difficultyMax,
+      count: 100
+    })
+  });
+
+  const data = await res.json();
+
+  const rows =
+    data.results?.[0]?.response?.result?.rows || [];
+
+  const puzzles = rows.filter(p => {
+    const move = (p.moves || "").split(" ")[1];
+    if (!move) return false;
+
+    const chess = new Chess(p.fen);
+    chess.move(parseUCI(move));
+
+    const played = chess.history({ verbose: true }).pop();
+    if (!played) return false;
+
+    const map = {
+      p: "pawn",
+      n: "knight",
+      b: "bishop",
+      r: "rook",
+      q: "queen",
+      k: "king"
+    };
+
+    return map[played.piece] === piece;
+  });
+
+  if (!puzzles.length)
+    throw new Error("No puzzles found.");
+
+  const p = puzzles[Math.floor(Math.random() * puzzles.length)];
+
+  p.moves = p.moves.split(" ");
+
+  return p;
+}
 /* ============================================================
    UCI MOVE PARSING
    ============================================================ */
