@@ -188,7 +188,8 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 .topbar{display:flex;align-items:center;gap:10px;padding:18px 16px 4px;max-width:760px;margin:0 auto;}
 .topbar h2{font-size:22px;}
 .back-btn{background:none;border:none;color:var(--gold);font-size:22px;cursor:pointer;padding:4px 8px;}
-.topbar .spacer{flex:1;}
+
+.panel-hidden{display:none!important;}
 
 .hidden{display:none!important;}
 body{
@@ -242,8 +243,6 @@ body{
   <div class="topbar">
     <button class="back-btn" id="trainerBack">←</button>
     <h2 id="trainerTitle">Trainer</h2>
-    <div class="spacer"></div>
-    <button class="icon-btn" id="btnTogglePanel" title="Hide info panel">🙈</button>
   </div>
 
   <div class="trainer-wrap">
@@ -271,13 +270,11 @@ body{
         <button class="btn" id="btnHint">💡 Hint</button>
         <button class="btn" id="btnSolution">📖 Solution</button>
         <button class="btn primary" id="btnNext">Next Puzzle →</button>
-        <button class="btn danger" id="btnResign">Resign</button>
-        <button class="btn" id="btnNewRandom">🔀 New Random</button>
       </div>
     </div>
 
     <div class="side-panel">
-      <div class="info-card glass">
+      <div class="info-card glass panel-hidden">
         <h3>Puzzle Info</h3>
         <div class="info-row"><span>Piece</span><span class="v" id="infoPiece">—</span></div>
         <div class="info-row"><span>Rating</span><span class="v" id="infoRating">—</span></div>
@@ -297,11 +294,11 @@ body{
           <button class="btn" id="btnStockfishGo">▶ Continue with Stockfish</button>
         </div>
       </div>
-      <div class="info-card glass">
+      <div class="info-card glass panel-hidden">
         <h3>Themes</h3>
         <div id="infoThemes">—</div>
       </div>
-      <div class="info-card glass">
+      <div class="info-card glass panel-hidden">
         <h3>Opening</h3>
         <div id="infoOpening" style="font-size:13px;color:var(--text-dim);">—</div>
       </div>
@@ -1184,31 +1181,9 @@ function playOutSolutionFromCursor(){
 document.getElementById('btnNext').addEventListener('click', ()=>{
   if(state.currentPiece) startTraining(state.currentPiece);
 });
-document.getElementById('btnNewRandom').addEventListener('click', ()=>{
-  const p = PIECES[Math.floor(Math.random()*PIECES.length)];
-  startTraining(p.key);
-});
-document.getElementById('btnResign').addEventListener('click', ()=>{
-  if(!state.currentPuzzle) return;
-  breakStreak();
-  setStatus('Resigned. Here is the solution:', 'wrong');
-  state.solving = false;
-  setDragEnabled(false);
-  clearHighlights();
-  jumpToFenIndex(state.fenHistory.length - 1);
-  playOutSolutionFromCursor();
-});
 document.getElementById('btnFlip').addEventListener('click', ()=>{
   state.board.flip();
   state.boardOrientation = state.boardOrientation === 'white' ? 'black' : 'white';
-});
-document.getElementById('btnTogglePanel').addEventListener('click', ()=>{
-  const panel = document.querySelector('.side-panel');
-  const btn = document.getElementById('btnTogglePanel');
-  const nowHidden = panel.classList.toggle('hidden');
-  btn.textContent = nowHidden ? '👁' : '🙈';
-  btn.title = nowHidden ? 'Show info panel' : 'Hide info panel';
-  if(state.board) setTimeout(()=>state.board.resize(), 60);
 });
 document.getElementById('btnFavorite').addEventListener('click', toggleFavorite);
 function toggleFavorite(){
