@@ -1178,8 +1178,11 @@ function initBoardIfNeeded(){
     window.addEventListener('resize', ()=>state.board && state.board.resize());
     state.boardResizeWired = true;
   }
-// click/tap-to-move: delegated via data-square attributes introduced in chessboard.js 1.0.0
-$('#board').off('click.cpt').on('click.cpt', '[data-square]', function() {
+// click/tap-to-move: handled via mousedown/touchstart to prevent chessboard.js from swallowing mobile taps
+$('#board').off('mousedown.cpt touchstart.cpt').on('mousedown.cpt touchstart.cpt', '[data-square]', function(e) {
+  // Prevent ghost clicks on hybrid touch/mouse devices
+  if (e.type === 'touchstart') e.stopPropagation();
+  
   const square = $(this).attr('data-square');
   if (square) onBoardSquareClick(square);
 });
@@ -1427,9 +1430,14 @@ function onBoardSquareClick(square){
     if(!(state.solving && state.currentPuzzle)) return;
   }
 
+  // Smooth selection switching: if a piece is already selected, tapping another piece of your own changes focus smoothly
+  if (canSelect(square) && square !== state.selectedSquare) {
+    highlightLegalMoves(square);
+    return;
+  }
+
   // Second tap = attempt move
   if(state.selectedSquare){
-
     if(square === state.selectedSquare){
       clearHighlights();
       return;
