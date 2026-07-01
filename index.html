@@ -1178,11 +1178,11 @@ function initBoardIfNeeded(){
     window.addEventListener('resize', ()=>state.board && state.board.resize());
     state.boardResizeWired = true;
   }
-  // click-to-move: delegated so it survives rebuildBoard() recreating the squares
-  $('#board').off('click.cpt').on('click.cpt', '.square-55d63', function(){
-    const cls = Array.from(this.classList).find(c=>/^square-[a-h][1-8]$/.test(c));
-    if(cls) onBoardSquareClick(cls.replace('square-',''));
-  });
+// click/tap-to-move: delegated via data-square attributes introduced in chessboard.js 1.0.0
+$('#board').off('click.cpt').on('click.cpt', '[data-square]', function() {
+  const square = $(this).attr('data-square');
+  if (square) onBoardSquareClick(square);
+});
 }
 function rebuildBoard(){
   // Recreate the board (needed when showNotation / pieceTheme options change,
@@ -1372,8 +1372,8 @@ function setDragEnabled(enabled){
 /* ============================================================
    LEGAL-MOVE HIGHLIGHTING + CLICK-TO-MOVE
    ============================================================ */
-function squareEl(square){
-  return document.querySelector(`#board .square-${square}`);
+function squareEl(square) {
+  return document.querySelector(`#board [data-square="${square}"]`);
 }
 function clearHighlights(){
   document.querySelectorAll('#board .sq-legal, #board .sq-legal-capture, #board .sq-selected')
