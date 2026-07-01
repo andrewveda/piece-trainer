@@ -1344,25 +1344,39 @@ document.getElementById('chipRecent').addEventListener('click', ()=>{
    ============================================================ */
 function initBoardIfNeeded(){
   if(state.board) return;
+  
   state.board = Chessboard('board', {
     draggable: true,
     position: 'start',
     pieceTheme: pieceThemeUrl,
     showNotation: state.settings.coordinates,
-    onDragStart, onDrop, onSnapEnd
+    onDragStart, 
+    onDrop, 
+    onSnapEnd
   });
+  
   if(!state.boardResizeWired){
-    window.addEventListener('resize', ()=>state.board && state.board.resize());
+    window.addEventListener('resize', ()=> {
+      if(state.board) {
+        state.board.resize();
+        applyBoardColor(); // Protect visual highlights during dynamic sizing events
+      }
+    });
     state.boardResizeWired = true;
   }
-// click/tap-to-move: handled via mousedown/touchstart to prevent chessboard.js from swallowing mobile taps
-$('#board').off('mousedown.cpt touchstart.cpt').on('mousedown.cpt touchstart.cpt', '[data-square]', function(e) {
-  // Prevent ghost clicks on hybrid touch/mouse devices
-  if (e.type === 'touchstart') e.stopPropagation();
-  
-  const square = $(this).attr('data-square');
-  if (square) onBoardSquareClick(square);
-});
+
+  // Bind robust cross-platform touch and click delegation directly to the DOM grid wrapper
+  $('#board')
+    .off('mousedown.cpt touchstart.cpt')
+    .on('mousedown.cpt touchstart.cpt', '[data-square]', function(e) {
+      // Prevent double-evaluation events on hybrid responsive viewports
+      if (e.type === 'touchstart') e.stopPropagation();
+      
+      const square = $(this).attr('data-square');
+      if (square) {
+        onBoardSquareClick(square);
+      }
+    });
 }
 function rebuildBoard(){
   // Recreate the board (needed when showNotation / pieceTheme options change,
@@ -1607,33 +1621,42 @@ function onBoardSquareClick(square){
     if(!(state.solving && state.currentPuzzle)) return;
   }
 
-  // Smooth selection switching: if a piece is already selected, tapping another piece of your own changes focus smoothly
+  // Smooth selection switching: tapping another own piece shifts focus instantly
   if (canSelect(square) && square !== state.selectedSquare) {
     highlightLegalMoves(square);
     return;
   }
 
-  // Second tap = attempt move
+  // Second tap: evaluate move targets
   if(state.selectedSquare){
     if(square === state.selectedSquare){
       clearHighlights();
       return;
     }
 
-    const outcome = state.analysisMode
-      ? attemptFreeMove(state.selectedSquare, square)
-      : attemptSolvingMove(state.selectedSquare, square);
+    // Check if the tapped square is actually an available legal path target
+    if (state.legalTargets.includes(square)) {
+      const outcome = state.analysisMode
+        ? attemptFreeMove(state.selectedSquare, square)
+        : attemptSolvingMove(state.selectedSquare, square);
 
-    clearHighlights();
+      clearHighlights();
 
-    if(outcome === 'accepted'){
-      state.board.position(state.chess.fen());
+      if(outcome === 'accepted' && state.board){
+        state.board.position(state.chess.fen());
+      }
+    } else {
+      // Tapped outside legal bounds: if it's a valid friendly piece, select it instead; otherwise reset.
+      if (canSelect(square)) {
+        highlightLegalMoves(square);
+      } else {
+        clearHighlights();
+      }
     }
-
     return;
   }
 
-  // First tap = select own piece
+  // Initial tap asset acquisition
   if(canSelect(square)){
     highlightLegalMoves(square);
   }
@@ -1741,8 +1764,10 @@ function attemptFreeMove(source, target){
 }
 
 /* ---- drag & drop handlers ---- */
-function onDragStart(source, piece){
+function onDragStart(source, piece, position, orientation){
   if(!canSelect(source)) return false;
+  
+  // Instantly highlight target squares visually upon grabbing the piece
   highlightLegalMoves(source);
   return true;
 }
