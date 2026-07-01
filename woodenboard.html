@@ -9,9 +9,13 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230b0e14'/%3E%3Ctext x='50' y='68' font-size='60' text-anchor='middle' fill='%23d4af37'%3E%E2%99%9E%3C/text%3E%3C/svg%3E">
 
+<!-- ============================================================
+     EXTERNAL LIBRARIES (the only two allowed)
+     ============================================================ -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/chessground/assets/chessground.css">
-<link rel="stylesheet" href="https://unpkg.com/chessground/assets/theme/cburnett.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
 
 <style>
 /* ============================================================
@@ -32,10 +36,6 @@
   --radius:18px;
   --serif:Georgia,'Iowan Old Style','Palatino Linotype',serif;
   --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-  
-  /* Dynamic procedural Chessground board square targets */
-  --board-light: #f0d9b5;
-  --board-dark: #b58863;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden;}
@@ -88,6 +88,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 .quick-row{display:flex;gap:10px;padding:0 16px 20px;overflow-x:auto;}
 .chip{flex:0 0 auto;padding:10px 16px;border-radius:999px;font-size:13px;color:var(--text);cursor:pointer;white-space:nowrap;}
 .chip:active{transform:scale(0.96);}
+.chip.active{border-color:var(--gold);color:var(--gold-soft);}
 
 /* ===================== BOTTOM NAV ===================== */
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:50;display:flex;justify-content:space-around;padding:10px 8px calc(10px + env(safe-area-inset-bottom));background:rgba(11,14,20,0.85);backdrop-filter:blur(16px);border-top:1px solid var(--panel-border);}
@@ -100,26 +101,12 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 @media (min-width:880px){.trainer-wrap{flex-direction:row;align-items:flex-start;}}
 .board-col{flex:1;min-width:0;}
 .board-shell{max-width:560px;margin:0 auto;position:relative;}
-
-/* Chessground container rendering optimizations */
-#board {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 18px 50px rgba(0,0,0,0.5);
-  position: relative;
-}
-
-/* Procedural engine grid generation (removes background dependencies) */
-#board cg-board {
-  background-image: repeating-conic-gradient(var(--board-light) 0% 25%, var(--board-dark) 0% 50%);
-  background-size: 25% 25%;
-}
-
+#board{width:100%;border-radius:10px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,0.5);}
+.board-arrows{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6;}
 .board-toolbar{display:flex;justify-content:space-between;align-items:center;padding:6px 2px 10px;max-width:560px;margin:0 auto;}
 .icon-btn{background:var(--panel);border:1px solid var(--panel-border);color:var(--text);width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;}
 .icon-btn:active{transform:scale(0.92);}
+.icon-btn:disabled{opacity:0.35;cursor:default;}
 .status-bar{max-width:560px;margin:0 auto 6px;text-align:center;min-height:24px;font-size:14px;font-weight:600;letter-spacing:0.2px;}
 .status-bar.correct{color:var(--green);}
 .status-bar.wrong{color:var(--red);}
@@ -128,8 +115,11 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 .action-row{display:flex;flex-wrap:wrap;gap:8px;max-width:560px;margin:10px auto 0;justify-content:center;}
 .btn{font-family:var(--sans);font-size:13px;font-weight:600;padding:11px 16px;border-radius:12px;border:1px solid var(--panel-border);background:var(--panel);color:var(--text);cursor:pointer;min-height:42px;}
 .btn:active{transform:scale(0.96);}
+.btn:disabled{opacity:0.35;cursor:default;transform:none;}
 .btn.primary{background:linear-gradient(135deg,var(--gold-soft),var(--gold));color:#1a1404;border:none;}
 .btn.danger{border-color:rgba(225,86,78,0.4);color:var(--red);}
+
+.nav-row{display:flex;gap:8px;max-width:560px;margin:8px auto 0;justify-content:center;}
 
 .side-panel{width:100%;max-width:340px;margin:0 auto;}
 @media (min-width:880px){.side-panel{width:320px;flex:0 0 320px;}}
@@ -140,17 +130,40 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 .info-row .v{color:var(--gold-soft);font-weight:600;text-align:right;max-width:60%;}
 .theme-tag{display:inline-block;font-size:11px;padding:3px 9px;margin:3px 3px 0 0;border-radius:999px;background:rgba(212,175,55,0.12);color:var(--gold-soft);}
 
+.engine-compact-row{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--text-dim);padding:2px 0 8px;}
+.engine-compact-row strong{color:var(--gold-soft);font-weight:700;}
+.engine-toggle-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0 10px;border-top:1px solid rgba(255,255,255,0.05);}
+.engine-toggle-row .lbl{font-size:12.5px;}
+.engine-toggle-row .sub{font-size:10.5px;color:var(--text-dim);margin-top:1px;}
+.switch.small{width:38px;height:22px;}
+.switch.small .knob{width:16px;height:16px;top:3px;left:3px;}
+.switch.small.on .knob{left:19px;}
+
+.move-list{display:flex;flex-wrap:wrap;gap:4px 0;font-size:13px;max-height:120px;overflow-y:auto;line-height:1.9;}
+.move-list .mv{padding:2px 7px;border-radius:7px;cursor:pointer;color:var(--text-dim);}
+.move-list .mv:hover{background:rgba(255,255,255,0.06);}
+.move-list .mv.current{background:rgba(212,175,55,0.18);color:var(--gold-soft);font-weight:700;}
+.move-list .mnum{color:var(--text-dim);font-size:11px;padding-right:2px;}
+.mini-actions{display:flex;gap:8px;margin-top:10px;}
+.mini-actions .btn{flex:1;padding:8px 6px;font-size:12px;min-height:34px;}
+
 .loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:14px;color:var(--text-dim);}
 .spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--panel-border);border-top-color:var(--gold);animation:spin 0.8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
-/* Unified mobile-first tactile feedback animation context */
-.shake-anim { animation: shake 0.4s; }
+/* board square highlight animations */
+.sq-correct{box-shadow:inset 0 0 0 9999px rgba(95,191,110,0.45)!important;}
+.sq-wrong{animation:shake 0.4s;}
 @keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}}
+.sq-hint{box-shadow:inset 0 0 0 9999px rgba(212,175,55,0.5)!important;}
 
-/* .sq-hint custom highlighting layer directly leveraging Chessground styles */
-#board g.shapes { opacity: 0.75; }
+/* legal-move affordances shown the instant a piece is selected */
+.sq-selected{box-shadow:inset 0 0 0 9999px rgba(212,175,55,0.32)!important;}
+.sq-legal,.sq-legal-capture{position:relative;}
+.sq-legal::after{content:'';position:absolute;top:50%;left:50%;width:26%;height:26%;border-radius:50%;background:rgba(20,18,14,0.32);transform:translate(-50%,-50%);pointer-events:none;}
+.sq-legal-capture::after{content:'';position:absolute;inset:6%;border-radius:50%;border:4px solid rgba(20,18,14,0.38);background:transparent;pointer-events:none;}
 
+/* ===================== STATS ===================== */
 .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:14px 16px;max-width:760px;margin:0 auto;}
 @media (min-width:640px){.stats-grid{grid-template-columns:repeat(4,1fr);}}
 .stat-card{padding:16px;text-align:center;}
@@ -163,6 +176,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 .bar-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-soft));}
 .piece-stat-row .pct{font-size:12px;color:var(--text-dim);width:42px;text-align:right;}
 
+/* ===================== SETTINGS / ABOUT ===================== */
 .simple-screen{max-width:600px;margin:0 auto;padding:16px;}
 .settings-row{display:flex;justify-content:space-between;align-items:center;padding:16px;margin-bottom:10px;}
 .settings-row .lbl{font-size:14px;}
@@ -185,19 +199,14 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:0.2px;margin:0;
 .topbar h2{font-size:22px;}
 .back-btn{background:none;border:none;color:var(--gold);font-size:22px;cursor:pointer;padding:4px 8px;}
 
-.hidden{display:none!important;}
-cg-container {
-    display: block;
-    width: 100%;
-    height: 100%;
-    position: relative;
-}
+.panel-hidden{display:none!important;}
 
-cg-board {
-    display: block;
-    width: 100%;
-    height: 100%;
-    position: relative;
+.hidden{display:none!important;}
+body{
+  position:fixed;
+  inset:0;
+  overflow:hidden;
+  padding-bottom:78px;
 }
 </style>
 </head>
@@ -209,13 +218,24 @@ cg-board {
   <span style="left:30%;top:60%;animation-delay:-12s;">♜</span><span style="left:85%;top:55%;animation-delay:-4s;">♛</span>
 </div>
 
+<!-- =========================================================
+     HOME SCREEN
+     ========================================================= -->
 <section id="screen-home" class="screen active">
   <div class="home-header">
     <h1>Chess Piece Trainer</h1>
     <p>Master tactical patterns one piece at a time.</p>
   </div>
 
-  <div class="piece-grid" id="pieceGrid"></div>
+  <div class="piece-grid" id="pieceGrid"><!-- piece cards injected by JS --></div>
+
+  <div class="section-label">Difficulty</div>
+  <div class="quick-row" id="difficultyRow">
+    <div class="chip glass active" data-min="0" data-max="9999">All</div>
+    <div class="chip glass" data-min="0" data-max="1200">Easy</div>
+    <div class="chip glass" data-min="1200" data-max="1800">Medium</div>
+    <div class="chip glass" data-min="1800" data-max="9999">Hard</div>
+  </div>
 
   <div class="section-label">Quick Start</div>
   <div class="quick-row">
@@ -226,6 +246,9 @@ cg-board {
   </div>
 </section>
 
+<!-- =========================================================
+     TRAINER SCREEN
+     ========================================================= -->
 <section id="screen-trainer" class="screen">
   <div class="topbar">
     <button class="back-btn" id="trainerBack">←</button>
@@ -235,7 +258,8 @@ cg-board {
   <div class="trainer-wrap">
     <div class="board-col">
       <div class="board-shell">
-        <div id="board" class="blue cburnett"></div>
+        <div id="board"></div>
+        <svg id="boardArrows" class="board-arrows" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
         <div id="loadingOverlay" class="loading hidden">
           <div class="spinner"></div>
           <div>Fetching puzzle…</div>
@@ -246,36 +270,70 @@ cg-board {
         <div class="status-bar info" id="statusBar">Choose a piece to begin</div>
         <button class="icon-btn" id="btnFavorite" title="Favorite">☆</button>
       </div>
+      <div class="nav-row">
+        <button class="icon-btn" id="btnFirst" title="Jump to start">⏮</button>
+        <button class="icon-btn" id="btnPrev" title="Previous move">◀</button>
+        <button class="icon-btn" id="btnUndo" title="Undo my last move">↩</button>
+        <button class="icon-btn" id="btnNextMove" title="Next move">▶</button>
+        <button class="icon-btn" id="btnLast" title="Jump to latest">⏭</button>
+      </div>
       <div class="action-row">
         <button class="btn" id="btnHint">💡 Hint</button>
         <button class="btn" id="btnSolution">📖 Solution</button>
         <button class="btn primary" id="btnNext">Next Puzzle →</button>
-        <button class="btn danger" id="btnResign">Resign</button>
-        <button class="btn" id="btnNewRandom">🔀 New Random</button>
       </div>
     </div>
 
     <div class="side-panel">
-      <div class="info-card glass">
+      <div class="info-card glass panel-hidden">
         <h3>Puzzle Info</h3>
         <div class="info-row"><span>Piece</span><span class="v" id="infoPiece">—</span></div>
         <div class="info-row"><span>Rating</span><span class="v" id="infoRating">—</span></div>
         <div class="info-row"><span>Popularity</span><span class="v" id="infoPopularity">—</span></div>
         <div class="info-row"><span>Times Played</span><span class="v" id="infoPlays">—</span></div>
         <div class="info-row"><span>Puzzle ID</span><span class="v" id="infoId">—</span></div>
+        <div class="info-row"><span>Move</span><span class="v" id="infoMoveCount">—</span></div>
+        <div class="info-row"><span>Session Solved</span><span class="v" id="infoSession">0</span></div>
       </div>
       <div class="info-card glass">
+        <h3>Stockfish Engine</h3>
+        <div class="engine-compact-row">
+          <span>Eval <strong id="engineEval">—</strong></span>
+          <span>Depth <strong id="engineDepth">—</strong></span>
+          <span>Best <strong id="engineBest">—</strong></span>
+        </div>
+        <div class="engine-toggle-row">
+          <div><div class="lbl">Analysis Mode</div><div class="sub">Play any legal move freely</div></div>
+          <div class="switch small" id="toggleAnalysis"><div class="knob"></div></div>
+        </div>
+        <div class="mini-actions">
+          <button class="btn" id="btnStockfishAnalyze">🤖 Analyze</button>
+          <button class="btn" id="btnStockfishGo">▶ Continue</button>
+        </div>
+      </div>
+      <div class="info-card glass panel-hidden">
         <h3>Themes</h3>
         <div id="infoThemes">—</div>
       </div>
-      <div class="info-card glass">
+      <div class="info-card glass panel-hidden">
         <h3>Opening</h3>
         <div id="infoOpening" style="font-size:13px;color:var(--text-dim);">—</div>
+      </div>
+      <div class="info-card glass">
+        <h3>Notation</h3>
+        <div class="move-list" id="moveList">—</div>
+        <div class="mini-actions">
+          <button class="btn" id="btnCopyFen">Copy FEN</button>
+          <button class="btn" id="btnCopyPgn">Copy PGN</button>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
+<!-- =========================================================
+     STATISTICS SCREEN
+     ========================================================= -->
 <section id="screen-stats" class="screen">
   <div class="topbar"><h2>Statistics</h2></div>
   <div class="stats-grid">
@@ -295,6 +353,9 @@ cg-board {
   </div>
 </section>
 
+<!-- =========================================================
+     SETTINGS SCREEN
+     ========================================================= -->
 <section id="screen-settings" class="screen">
   <div class="simple-screen">
     <div class="topbar" style="padding:2px 0 4px;"><h2>Settings</h2></div>
@@ -320,7 +381,16 @@ cg-board {
       <div class="switch" id="toggleAutoFlip"><div class="knob"></div></div>
     </div>
     <div class="settings-row glass">
-      <div><div class="lbl">Piece Style Scheme</div><div class="sub">Lichess aesthetic vectors standard</div></div>
+      <div><div class="lbl">Auto-Advance</div><div class="sub">Load next puzzle automatically once solved</div></div>
+      <div class="switch" id="toggleAutoAdvance"><div class="knob"></div></div>
+    </div>
+    <div class="settings-row glass">
+      <div><div class="lbl">Piece Style</div></div>
+      <select class="select-pill" id="selPieceStyle">
+        <option value="wikipedia">Classic</option>
+        <option value="alpha">Alpha</option>
+        <option value="merida">Merida</option>
+      </select>
     </div>
     <div class="settings-row glass">
       <div><div class="lbl">Board Color</div></div>
@@ -334,6 +404,9 @@ cg-board {
   </div>
 </section>
 
+<!-- =========================================================
+     ABOUT SCREEN
+     ========================================================= -->
 <section id="screen-about" class="screen">
   <div class="simple-screen">
     <div class="topbar" style="padding:2px 0 4px;"><h2>About</h2></div>
@@ -341,11 +414,15 @@ cg-board {
       <h3>Chess Piece Trainer</h3>
       <p>A focused tactics trainer that lets you drill puzzles by the piece that delivers the winning move — pawns, knights, bishops, rooks, queens, and kings each have their own pattern language. Pick a piece, solve the first move, and watch the combination play out.</p>
       <p>Puzzles are streamed live from a Lichess-derived puzzle database, organized by piece and loaded one at a time to keep the app fast and light — nothing is ever preloaded in bulk.</p>
-      <p>Built with vanilla HTML, CSS and JavaScript, plus chess.js and Chessground. No frameworks, no build step — runs entirely anywhere.</p>
+      <p>Built with vanilla HTML, CSS and JavaScript, plus chess.js and chessboard.js. No frameworks, no build step — runs entirely on GitHub Pages.</p>
+      <p style="margin-top:10px;">Keyboard shortcuts: <strong>←</strong> / <strong>→</strong> step through moves, <strong>H</strong> hint, <strong>N</strong> next puzzle.</p>
     </div>
   </div>
 </section>
 
+<!-- =========================================================
+     BOTTOM NAVIGATION
+     ========================================================= -->
 <nav class="bottom-nav">
   <button class="nav-btn active" data-screen="home"><span class="ic">♟</span>Home</button>
   <button class="nav-btn" data-screen="stats"><span class="ic">📊</span>Statistics</button>
@@ -355,9 +432,7 @@ cg-board {
 
 <div class="toast" id="toast"></div>
 
-<script type="module">
-import { Chessground } from 'https://cdn.jsdelivr.net/npm/chessground/+esm';
-
+<script>
 'use strict';
 
 /* ============================================================
@@ -367,6 +442,9 @@ const CONFIG = {
   REPO_BASE: 'https://raw.githubusercontent.com/andrewveda/piece-trainer/main/output',
   CACHE_LIMIT: 24,
   AUTO_MOVE_DELAY: 480,
+  AUTO_ADVANCE_DELAY: 1400,
+  STOCKFISH_URL: 'https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js',
+  ENGINE_DEPTH: 14,
 };
 
 const PIECES = [
@@ -387,16 +465,28 @@ const state = {
   masterIndex: null,
   currentPiece: null,
   currentPuzzle: null,
-  chess: null,
+  chess: null,            // chess.js instance reflecting the *live* (latest) position
   board: null,
-  solving: false,
-  moveCursor: 0,
+  boardResizeWired: false,
+  solving: false,          // true while it is the user's turn to find the solving move
+  moveCursor: 0,            // index into puzzle.moves the live game has reached
+  fenHistory: [],           // fen snapshot after each ply played (index 0 = puzzle start fen)
+  viewIndex: 0,             // which fen in fenHistory is currently shown on the board (review mode)
   boardOrientation: 'white',
   puzzleStartTime: null,
+  sessionSolved: 0,
+  difficultyMin: 0,
+  difficultyMax: 9999,
   settings: loadSettings(),
   stats: loadStats(),
   favorites: loadJSON('cpt_favorites', []),
   recents: loadJSON('cpt_recents', []),
+  selectedSquare: null,     // square clicked to start a click-to-move (vs. drag)
+  legalTargets: [],         // legal destination squares for the currently selected piece
+  sf: null,                 // Stockfish Web Worker instance (lazy-created)
+  sfMode: null,             // 'analyze' | 'continue' | null — what the pending engine search is for
+  sfBestLine: {},           // last parsed "info" line from the engine
+  analysisMode: false,      // when true, any legal move can be played (not just the puzzle line)
 };
 
 /* ============================================================
@@ -407,12 +497,12 @@ function loadJSON(key, fallback){
   catch(e){ return fallback; }
 }
 function saveJSON(key, val){
-  try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
+  try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){/* storage full / unavailable */}
 }
 function loadSettings(){
   return loadJSON('cpt_settings', {
     theme:'dark', sound:true, animations:true, coordinates:true,
-    autoFlip:false, boardColor:'brown'
+    autoFlip:false, autoAdvance:false, pieceStyle:'wikipedia', boardColor:'brown'
   });
 }
 function saveSettings(){ saveJSON('cpt_settings', state.settings); }
@@ -429,7 +519,7 @@ function loadStats(){
 function saveStats(){ saveJSON('cpt_stats', state.stats); }
 
 /* ============================================================
-   NETWORKING
+   NETWORKING — lazy fetch with small in-memory cache
    ============================================================ */
 async function fetchJSONCached(url){
   if(state.cache.has(url)) return state.cache.get(url);
@@ -455,12 +545,24 @@ async function getPieceFileList(piece){
 async function getRandomPuzzleForPiece(piece){
   const files = await getPieceFileList(piece);
   if(!files.length) throw new Error('No puzzle files found for ' + piece);
-  const file = files[Math.floor(Math.random() * files.length)];
-  const url = `${CONFIG.REPO_BASE}/${piece}/${file}`;
-  const puzzles = await fetchJSONCached(url);
-  const arr = Array.isArray(puzzles) ? puzzles : (puzzles.puzzles || []);
-  if(!arr.length) throw new Error('Empty puzzle file: ' + file);
-  return arr[Math.floor(Math.random() * arr.length)];
+  // try a handful of random files so a difficulty filter has a chance of matching
+  const tried = new Set();
+  for(let attempt=0; attempt<6 && tried.size < files.length; attempt++){
+    const file = files[Math.floor(Math.random() * files.length)];
+    if(tried.has(file)) continue;
+    tried.add(file);
+    const url = `${CONFIG.REPO_BASE}/${piece}/${file}`;
+    const puzzles = await fetchJSONCached(url);
+    const arr = Array.isArray(puzzles) ? puzzles : (puzzles.puzzles || []);
+    if(!arr.length) continue;
+    const candidates = arr.filter(p=>{
+      const r = typeof p.rating === 'number' ? p.rating : 0;
+      return r >= state.difficultyMin && r <= state.difficultyMax;
+    });
+    const pool = candidates.length ? candidates : arr;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  throw new Error('No puzzles found matching the current filters.');
 }
 
 /* ============================================================
@@ -489,7 +591,7 @@ function beep(freq, duration, type='sine'){
     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
     osc.connect(gain); gain.connect(audioCtx.destination);
     osc.start(); osc.stop(audioCtx.currentTime + duration);
-  }catch(e){}
+  }catch(e){/* audio unavailable */}
 }
 const sfx = {
   move: ()=>beep(420,0.08),
@@ -511,7 +613,7 @@ function toast(msg){
 }
 
 /* ============================================================
-   NAVIGATION
+   NAVIGATION (screens)
    ============================================================ */
 function showScreen(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -520,6 +622,7 @@ function showScreen(name){
     b.classList.toggle('active', b.dataset.screen === name);
   });
   if(name === 'stats') renderStats();
+  if(name === 'trainer' && state.board) setTimeout(()=>state.board.resize(), 50);
 }
 document.querySelectorAll('.nav-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>showScreen(btn.dataset.screen));
@@ -561,6 +664,15 @@ function ripple(el, evt){
   setTimeout(()=>r.remove(), 650);
 }
 
+document.querySelectorAll('#difficultyRow .chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#difficultyRow .chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    state.difficultyMin = Number(chip.dataset.min);
+    state.difficultyMax = Number(chip.dataset.max);
+  });
+});
+
 document.getElementById('chipRandom').addEventListener('click', ()=>{
   const p = PIECES[Math.floor(Math.random()*PIECES.length)];
   startTraining(p.key);
@@ -578,39 +690,38 @@ document.getElementById('chipRecent').addEventListener('click', ()=>{
 });
 
 /* ============================================================
-   TRAINER — Chessground Rules Synchronization
+   TRAINER — chessboard.js + chess.js wiring
    ============================================================ */
 function initBoardIfNeeded(){
   if(state.board) return;
-  
-  state.board = Chessground(document.getElementById('board'), {
-    coordinates: state.settings.coordinates,
-    movable: { free: false },
-    events: { move: onChessgroundMove }
+  state.board = Chessboard('board', {
+    draggable: true,
+    position: 'start',
+    pieceTheme: pieceThemeUrl,
+    showNotation: state.settings.coordinates,
+    onDragStart, onDrop, onSnapEnd
+  });
+  if(!state.boardResizeWired){
+    window.addEventListener('resize', ()=>state.board && state.board.resize());
+    state.boardResizeWired = true;
+  }
+  // click-to-move: delegated so it survives rebuildBoard() recreating the squares
+  $('#board').off('click.cpt').on('click.cpt', '.square-55d63', function(){
+    const cls = Array.from(this.classList).find(c=>/^square-[a-h][1-8]$/.test(c));
+    if(cls) onBoardSquareClick(cls.replace('square-',''));
   });
 }
-
-function getValidDestinations() {
-  const dests = new Map();
-  if (!state.solving) return dests;
-  state.chess.moves({ verbose: true }).forEach(m => {
-    if (!dests.has(m.from)) dests.set(m.from, []);
-    dests.get(m.from).push(m.to);
-  });
-  return dests;
+function rebuildBoard(){
+  // Recreate the board (needed when showNotation / pieceTheme options change,
+  // since chessboard.js 1.0.0 has no setter for those after construction).
+  if(state.board && state.board.destroy) state.board.destroy();
+  state.board = null;
+  initBoardIfNeeded();
+  refreshBoardPosition(false);
 }
-
-function syncBoardState() {
-  const activeColor = state.chess.turn() === 'w' ? 'white' : 'black';
-  state.board.set({
-    fen: state.chess.fen(),
-    turnColor: activeColor,
-    movable: {
-      color: state.solving ? activeColor : 'none',
-      dests: getValidDestinations()
-    },
-    check: state.chess.in_check()
-  });
+function pieceThemeUrl(piece){
+  const style = state.settings.pieceStyle || 'wikipedia';
+  return `https://chessboardjs.com/img/chesspieces/${style}/${piece}.png`;
 }
 
 async function startTraining(pieceKey, presetPuzzle){
@@ -620,6 +731,7 @@ async function startTraining(pieceKey, presetPuzzle){
   document.getElementById('trainerTitle').textContent = capitalize(pieceKey) + ' Trainer';
   setStatus('Fetching puzzle…', 'info');
   document.getElementById('loadingOverlay').classList.remove('hidden');
+  setDragEnabled(false); // never allow drags while a fetch is in flight
   try{
     const puzzle = presetPuzzle || await getRandomPuzzleForPiece(pieceKey);
     loadPuzzle(pieceKey, puzzle);
@@ -638,6 +750,7 @@ async function startDailyPuzzle(){
   initBoardIfNeeded();
   setStatus('Fetching daily puzzle…', 'info');
   document.getElementById('loadingOverlay').classList.remove('hidden');
+  setDragEnabled(false);
   try{
     const files = await getPieceFileList(seedPiece);
     const file = files[hashStr(today + seedPiece) % files.length];
@@ -664,30 +777,35 @@ function loadPuzzle(pieceKey, puzzle){
   state.currentPuzzle = puzzle;
   state.chess = new Chess(puzzle.fen);
   state.moveCursor = 0;
+  state.fenHistory = [puzzle.fen];
+  state.viewIndex = 0;
   state.solving = false;
   state.puzzleStartTime = Date.now();
+  setDragEnabled(false);
+  clearHighlights();
+  state.sfBestLine = {};
+  renderEnginePanel();
 
   const sideToSolve = state.chess.turn() === 'w' ? 'black' : 'white';
   state.boardOrientation = state.settings.autoFlip ? sideToSolve : 'white';
-  
-  state.board.set({
-    fen: puzzle.fen,
-    orientation: state.boardOrientation,
-    turnColor: state.chess.turn() === 'w' ? 'white' : 'black',
-    movable: { color: 'none', dests: new Map() },
-    drawable: { shapes: [] } // Clear previous markers safely
-  });
+  state.board.orientation(state.boardOrientation);
+  state.board.position(puzzle.fen, false);
 
   renderPuzzleInfo(pieceKey, puzzle);
+  renderMoveList();
   updateFavoriteButton();
-  setStatus('Watch the setup move…', 'info');
+  updateNavButtons();
+  updateMoveDisplay();
+  toast('Watch the setup move…');
 
+  // moves[0] is the opponent's "setup" move per Lichess puzzle convention.
   setTimeout(()=>{
-    applyMoveToBoard(puzzle.moves[0]);
+    if(state.currentPuzzle !== puzzle) return; // a newer puzzle has since been loaded
+    applyMoveToBoard(puzzle.moves[0], true);
     state.moveCursor = 1;
     state.solving = true;
-    syncBoardState();
-    setStatus('Your move — find the best continuation.', 'info');
+    setDragEnabled(true);
+    toast('Your move — find the best continuation.');
   }, 600);
 }
 
@@ -697,87 +815,282 @@ function renderPuzzleInfo(pieceKey, puzzle){
   document.getElementById('infoPopularity').textContent = (puzzle.popularity ?? '—') + (puzzle.popularity!=null?'%':'');
   document.getElementById('infoPlays').textContent = puzzle.nbPlays ?? '—';
   document.getElementById('infoId').textContent = puzzle.puzzleId ?? '—';
+  document.getElementById('infoSession').textContent = state.sessionSolved;
   const themesEl = document.getElementById('infoThemes');
   themesEl.innerHTML = (puzzle.themes||[]).map(t=>`<span class="theme-tag">${t}</span>`).join('') || '—';
   const opEl = document.getElementById('infoOpening');
   opEl.textContent = (puzzle.openingTags && puzzle.openingTags.length) ? puzzle.openingTags.join(', ') : 'No opening tag';
 }
+function updateMoveCounter(){
+  const total = state.currentPuzzle ? state.currentPuzzle.moves.length : 0;
+  document.getElementById('infoMoveCount').textContent = total ? `${Math.min(state.moveCursor,total)} / ${total}` : '—';
+}
 
-function applyMoveToBoard(uci){
+/**
+ * Applies a UCI move to the *live* chess.js game (state.chess) and pushes a
+ * fen snapshot onto fenHistory. If `showOnBoard` is true (default) and we are
+ * currently viewing the latest position, the board updates immediately;
+ * otherwise the board stays put so we don't yank the user out of review mode.
+ */
+function applyMoveToBoard(uci, showOnBoard){
   const mv = parseUCI(uci);
   const result = state.chess.move(mv);
-  if(result) {
-    state.board.set({ fen: state.chess.fen(), lastMove: [mv.from, mv.to] });
+  if(!result) return null;
+  state.fenHistory.push(state.chess.fen());
+  const wasAtLatest = state.viewIndex === state.fenHistory.length - 2;
+  if(wasAtLatest){
+    state.viewIndex = state.fenHistory.length - 1;
+    if(showOnBoard !== false) state.board.position(state.chess.fen());
   }
   sfx.move();
+  renderMoveList();
+  updateMoveCounter();
+  updateNavButtons();
+  updateMoveDisplay();
   return result;
 }
 
-function setStatus(msg, cls){
+/**
+ * The bar between the flip and favorite buttons now always shows notation
+ * (the move just played) instead of transient status text — transient
+ * messages ("Correct!", "Not quite", etc.) go through toast() instead.
+ * `flashClass` ('correct' | 'wrong' | 'info') briefly colors the notation
+ * text, e.g. green right after a correct move, then it settles back to plain.
+ */
+function updateMoveDisplay(flashClass){
+  clearBoardArrows();
   const el = document.getElementById('statusBar');
-  el.textContent = msg;
-  el.className = 'status-bar' + (cls ? ' ' + cls : '');
-}
-
-/* ---- User Drag Actions Interaction Mapping ---- */
-function onChessgroundMove(from, to) {
-  if (!state.solving || !state.currentPuzzle) return;
-  
-  const expected = parseUCI(state.currentPuzzle.moves[state.moveCursor]);
-
-  // Handle wrong move execution branch
-  if (from !== expected.from || to !== expected.to) {
-    registerAttempt(false);
-    triggerWrongMoveFeedback();
-    sfx.wrong();
-    setStatus('Not quite — try again.', 'wrong');
-    syncBoardState();
+  if(!state.chess || !state.fenHistory.length){
+    el.textContent = 'Choose a piece to begin';
+    el.className = 'status-bar info';
     return;
   }
+  const idx = state.viewIndex;
+  if(idx <= 0){
+    el.textContent = 'Starting position';
+    el.className = 'status-bar info';
+    return;
+  }
+  const history = state.chess.history();
+  const san = history[idx - 1];
+  if(!san){ el.textContent = 'Starting position'; el.className = 'status-bar info'; return; }
+  const moveNum = Math.ceil(idx / 2);
+  const isWhiteMove = idx % 2 === 1;
+  el.textContent = moveNum + (isWhiteMove ? '. ' : '… ') + san;
+  el.className = 'status-bar' + (flashClass ? ' ' + flashClass : '');
+  if(flashClass){
+    setTimeout(()=>{ if(el.textContent) el.className = 'status-bar'; }, 900);
+  }
+}
+function setStatus(msg, cls){
+  // Legacy call sites now just surface as a toast; the status bar itself is
+  // reserved for live notation (see updateMoveDisplay above).
+  toast(msg);
+}
 
-  // Handle valid move branch
-  state.chess.move({ from: from, to: to, promotion: expected.promotion });
+function setDragEnabled(enabled){
+  // chessboard.js 1.0.0 has no direct draggable setter; we gate everything
+  // through state.solving inside onDragStart instead, this just mirrors intent.
+  state.dragEnabled = enabled;
+}
+
+/* ============================================================
+   LEGAL-MOVE HIGHLIGHTING + CLICK-TO-MOVE
+   ============================================================ */
+function squareEl(square){
+  return document.querySelector(`#board .square-${square}`);
+}
+function clearHighlights(){
+  document.querySelectorAll('#board .sq-legal, #board .sq-legal-capture, #board .sq-selected')
+    .forEach(el=>el.classList.remove('sq-legal','sq-legal-capture','sq-selected'));
+  state.selectedSquare = null;
+  state.legalTargets = [];
+}
+function highlightLegalMoves(square){
+  clearHighlights();
+  if(!state.chess) return;
+  const moves = state.chess.moves({square, verbose:true});
+  if(!moves.length) return;
+  state.selectedSquare = square;
+  state.legalTargets = moves.map(m=>m.to);
+  const originEl = squareEl(square);
+  if(originEl) originEl.classList.add('sq-selected');
+  moves.forEach(m=>{
+    const el = squareEl(m.to);
+    if(el) el.classList.add(m.captured ? 'sq-legal-capture' : 'sq-legal');
+  });
+}
+function canSelect(square){
+  if(!state.chess || state.chess.game_over()) return false;
+  if(state.viewIndex !== state.fenHistory.length - 1) return false;
+  if(!state.dragEnabled) return false;
+  if(!state.analysisMode && !(state.solving && state.currentPuzzle)) return false;
+  const piece = state.chess.get(square);
+  if(!piece) return false;
+  return (state.chess.turn() === 'w') === (piece.color === 'w');
+}
+function onBoardSquareClick(square){
+  if(!state.chess || state.viewIndex !== state.fenHistory.length - 1) return;
+  if(!state.dragEnabled) return;
+  if(!state.analysisMode && !(state.solving && state.currentPuzzle)) return;
+  if(state.selectedSquare){
+    if(square === state.selectedSquare){ clearHighlights(); return; }
+    if(state.legalTargets.includes(square)){
+      const source = state.selectedSquare;
+      clearHighlights();
+      const outcome = state.analysisMode ? attemptFreeMove(source, square) : attemptSolvingMove(source, square);
+      if(outcome === 'accepted') state.board.position(state.chess.fen());
+      return;
+    }
+  }
+  if(canSelect(square)) highlightLegalMoves(square);
+  else clearHighlights();
+}
+
+/* ---- puzzle-mode move validation: must match the puzzle's solution line ---- */
+function attemptSolvingMove(source, target){
+  if(!state.dragEnabled || !state.solving) return 'rejected';
+  if(!state.currentPuzzle || state.moveCursor >= state.currentPuzzle.moves.length) return 'rejected';
+
+  const expected = parseUCI(state.currentPuzzle.moves[state.moveCursor]);
+  const legalMoves = state.chess.moves({verbose:true});
+  const isLegal = legalMoves.some(m=>m.from===source && m.to===target);
+  if(!isLegal) return 'rejected';
+
+  if(source !== expected.from || target !== expected.to){
+    registerAttempt(false);
+    flashSquare(target, 'sq-wrong');
+    sfx.wrong();
+    toast('Not quite — try again.');
+    return 'rejected';
+  }
+
+  // Correct move. Resolve under-promotion choice if this move is a pawn promotion.
+  const isPromotion = (state.chess.get(source)||{}).type === 'p' &&
+                       (target[1] === '8' || target[1] === '1');
+  let promotionPiece = expected.promotion || 'q';
+  if(isPromotion && expected.promotion === 'q'){
+    // The puzzle data defaults unspecified promotions to queen; ask the user
+    // to confirm so under-promotion puzzles aren't silently mis-scored.
+    const choice = window.prompt('Promote to (q, r, b, n):', 'q');
+    if(choice && /^[qrbn]$/i.test(choice.trim())) promotionPiece = choice.trim().toLowerCase();
+  }
+
+  const moveObj = { from: source, to: target, promotion: promotionPiece };
+  const result = state.chess.move(moveObj);
+  if(!result) return 'rejected'; // safety net: should not happen given checks above
+
+  state.fenHistory.push(state.chess.fen());
+  state.viewIndex = state.fenHistory.length - 1;
+
+  flashSquare(target, 'sq-correct');
   sfx.correct();
   registerAttempt(true);
   state.moveCursor++;
   state.solving = false;
-  setStatus('Correct!', 'correct');
+  setDragEnabled(false);
+  toast('Correct!');
+  updateMoveDisplay('correct');
+  renderMoveList();
+  updateMoveCounter();
+  updateNavButtons();
 
-  if (state.moveCursor >= state.currentPuzzle.moves.length) {
+  if(state.moveCursor >= state.currentPuzzle.moves.length){
     finishPuzzle();
-  } else {
-    syncBoardState();
+  }else{
     setTimeout(playNextAutoMove, CONFIG.AUTO_MOVE_DELAY);
   }
+  return 'accepted';
+}
+
+/* ---- analysis-mode move validation: any legal move for the side to move ---- */
+function attemptFreeMove(source, target){
+  if(!state.chess || state.chess.game_over()) return 'rejected';
+  const legalMoves = state.chess.moves({verbose:true});
+  const isLegal = legalMoves.some(m=>m.from===source && m.to===target);
+  if(!isLegal) return 'rejected';
+
+  const isPromotion = (state.chess.get(source)||{}).type === 'p' &&
+                       (target[1] === '8' || target[1] === '1');
+  let promotionPiece = 'q';
+  if(isPromotion){
+    const choice = window.prompt('Promote to (q, r, b, n):', 'q');
+    if(choice && /^[qrbn]$/i.test(choice.trim())) promotionPiece = choice.trim().toLowerCase();
+  }
+
+  const result = state.chess.move({ from: source, to: target, promotion: promotionPiece });
+  if(!result) return 'rejected';
+
+  state.fenHistory.push(state.chess.fen());
+  state.viewIndex = state.fenHistory.length - 1;
+
+  flashSquare(target, 'sq-correct');
+  sfx.move();
+  renderMoveList();
+  updateMoveCounter();
+  updateNavButtons();
+  updateMoveDisplay();
+  return 'accepted';
+}
+
+/* ---- drag & drop handlers ---- */
+function onDragStart(source, piece){
+  if(!canSelect(source)) return false;
+  highlightLegalMoves(source);
+  return true;
+}
+
+function onDrop(source, target){
+  clearHighlights();
+  const outcome = state.analysisMode ? attemptFreeMove(source, target) : attemptSolvingMove(source, target);
+  // chessboard.js expects 'snapback' to reject the drop, or undefined to accept
+  // and animate the piece into place itself (we resync via onSnapEnd either way).
+  return outcome === 'accepted' ? undefined : 'snapback';
+}
+function onSnapEnd(){
+  // Always resync to whatever fen the live game (or current review index) holds,
+  // since chessboard.js's own internal position can drift from chess.js otherwise.
+  const fen = state.fenHistory[state.viewIndex] || (state.chess && state.chess.fen());
+  if(fen) state.board.position(fen, false);
 }
 
 function playNextAutoMove(){
   if(!state.currentPuzzle || state.moveCursor >= state.currentPuzzle.moves.length) return;
+  clearHighlights();
   applyMoveToBoard(state.currentPuzzle.moves[state.moveCursor]);
   state.moveCursor++;
+  updateMoveCounter();
   if(state.moveCursor >= state.currentPuzzle.moves.length){
     finishPuzzle();
   }else{
     state.solving = true;
-    syncBoardState();
+    setDragEnabled(true);
     setStatus('Your move — continue the line.', 'info');
   }
 }
 
-function triggerWrongMoveFeedback() {
-  if (!state.settings.animations) return;
-  const boardEl = document.getElementById('board');
-  boardEl.classList.add('shake-anim');
-  setTimeout(() => boardEl.classList.remove('shake-anim'), 400);
+function flashSquare(square, cls){
+  if(!state.settings.animations) return;
+  const sq = document.querySelector(`#board .square-${square}`);
+  if(!sq) return;
+  sq.classList.add(cls);
+  setTimeout(()=>sq.classList.remove(cls), 500);
 }
 
 function finishPuzzle(){
-  setStatus('Puzzle solved! 🎉', 'correct');
+  toast('Puzzle solved! 🎉');
+  updateMoveDisplay('correct');
   sfx.success();
+  setDragEnabled(false);
+  clearHighlights();
   const elapsed = Date.now() - state.puzzleStartTime;
   recordSolve(state.currentPiece, state.currentPuzzle.rating, elapsed);
   addToRecents(state.currentPiece, state.currentPuzzle);
-  syncBoardState();
+  state.sessionSolved++;
+  document.getElementById('infoSession').textContent = state.sessionSolved;
+  if(state.settings.autoAdvance){
+    setTimeout(()=>{ if(state.currentPiece) startTraining(state.currentPiece); }, CONFIG.AUTO_ADVANCE_DELAY);
+  }
 }
 
 /* ============================================================
@@ -815,56 +1128,127 @@ function addToRecents(piece, puzzle){
 }
 
 /* ============================================================
-   ACTION BUTTONS
+   MOVE LIST / NOTATION + REVIEW NAVIGATION
    ============================================================ */
-document.getElementById('btnHint').addEventListener('click', () => {
-  if (!state.solving || !state.currentPuzzle) return toast('No active puzzle to hint.');
-  const expected = parseUCI(state.currentPuzzle.moves[state.moveCursor]);
-  
-  // Natively render hint circles inside Chessground canvas layer
-  state.board.set({
-    drawable: {
-      shapes: [{ orig: expected.from, brush: 'green' }]
+function renderMoveList(){
+  const el = document.getElementById('moveList');
+  if(!state.chess){ el.textContent = '—'; return; }
+  const history = state.chess.history();
+  if(!history.length){ el.textContent = '—'; return; }
+  el.innerHTML = '';
+  history.forEach((san, i)=>{
+    if(i % 2 === 0){
+      const num = document.createElement('span');
+      num.className = 'mnum';
+      num.textContent = (Math.floor(i/2)+1) + '.';
+      el.appendChild(num);
     }
+    const mv = document.createElement('span');
+    mv.className = 'mv' + (i + 1 === state.viewIndex ? ' current' : '');
+    mv.textContent = san;
+    mv.dataset.idx = i + 1; // index into fenHistory
+    mv.addEventListener('click', ()=>jumpToFenIndex(i+1));
+    el.appendChild(mv);
   });
-  setStatus('Hint: look at the highlighted piece.', 'info');
+}
+
+function jumpToFenIndex(idx){
+  if(!state.fenHistory.length) return;
+  idx = Math.max(0, Math.min(idx, state.fenHistory.length - 1));
+  state.viewIndex = idx;
+  clearHighlights();
+  state.board.position(state.fenHistory[idx], false);
+  renderMoveList();
+  updateNavButtons();
+  updateMoveDisplay();
+  // Disable dragging while reviewing a past position; resuming play requires "latest".
+  setDragEnabled(idx === state.fenHistory.length - 1 && state.solving);
+}
+function updateNavButtons(){
+  const atStart = state.viewIndex <= 0;
+  const atLatest = !state.fenHistory.length || state.viewIndex >= state.fenHistory.length - 1;
+  document.getElementById('btnFirst').disabled = atStart;
+  document.getElementById('btnPrev').disabled = atStart;
+  document.getElementById('btnNextMove').disabled = atLatest;
+  document.getElementById('btnLast').disabled = atLatest;
+  document.getElementById('btnUndo').disabled = !(state.currentPuzzle && state.moveCursor > 1 && atLatest && !state.solving === false ? true : (state.currentPuzzle && state.moveCursor > 1));
+}
+document.getElementById('btnFirst').addEventListener('click', ()=>jumpToFenIndex(0));
+document.getElementById('btnPrev').addEventListener('click', ()=>jumpToFenIndex(state.viewIndex - 1));
+document.getElementById('btnNextMove').addEventListener('click', ()=>jumpToFenIndex(state.viewIndex + 1));
+document.getElementById('btnLast').addEventListener('click', ()=>jumpToFenIndex(state.fenHistory.length - 1));
+
+document.getElementById('btnUndo').addEventListener('click', ()=>{
+  if(!state.currentPuzzle || state.moveCursor <= 1) return; // never undo past the auto-played setup move
+  // Roll the live game back one full ply (the player's last accepted move).
+  state.chess.undo();
+  state.fenHistory.pop();
+  state.moveCursor--;
+  state.viewIndex = state.fenHistory.length - 1;
+  clearHighlights();
+  state.board.position(state.fenHistory[state.viewIndex], false);
+  state.solving = true;
+  setDragEnabled(true);
+  setStatus('Move undone — try again.', 'info');
+  renderMoveList();
+  updateMoveCounter();
+  updateNavButtons();
+  updateMoveDisplay();
+});
+
+/* ============================================================
+   ACTION BUTTONS — hint / solution / next / resign / new random
+   ============================================================ */
+document.getElementById('btnHint').addEventListener('click', ()=>{
+  if(!state.solving || !state.currentPuzzle) return toast('No active puzzle to hint.');
+  if(state.viewIndex !== state.fenHistory.length - 1){ toast('Jump back to the latest move first.'); return; }
+  const expected = parseUCI(state.currentPuzzle.moves[state.moveCursor]);
+  clearHighlights();
+  flashSquare(expected.from, 'sq-hint');
+  setStatus('Hint: look at the highlighted square.', 'info');
 });
 
 document.getElementById('btnSolution').addEventListener('click', ()=>{
   if(!state.currentPuzzle) return;
   state.solving = false;
+  setDragEnabled(false);
+  clearHighlights();
   breakStreak();
+  jumpToFenIndex(state.fenHistory.length - 1);
   setStatus('Playing full solution…', 'info');
-  syncBoardState();
   playOutSolutionFromCursor();
 });
 function playOutSolutionFromCursor(){
-  if(state.moveCursor >= state.currentPuzzle.moves.length){
+  if(!state.currentPuzzle || state.moveCursor >= state.currentPuzzle.moves.length){
     setStatus('Solution complete.', 'info');
     return;
   }
   applyMoveToBoard(state.currentPuzzle.moves[state.moveCursor]);
   state.moveCursor++;
+  updateMoveCounter();
   setTimeout(playOutSolutionFromCursor, CONFIG.AUTO_MOVE_DELAY);
 }
 
 document.getElementById('btnNext').addEventListener('click', ()=>{
   if(state.currentPiece) startTraining(state.currentPiece);
 });
-document.getElementById('btnNewRandom').addEventListener('click', ()=>{
-  const p = PIECES[Math.floor(Math.random()*PIECES.length)];
-  startTraining(p.key);
-});
-document.getElementById('btnResign').addEventListener('click', ()=>{
-  if(!state.currentPuzzle) return;
-  breakStreak();
-  setStatus('Resigned. Here is the solution:', 'wrong');
-  state.solving = false;
-  syncBoardState();
-  playOutSolutionFromCursor();
-});
 document.getElementById('btnFlip').addEventListener('click', ()=>{
-  state.board.toggleOrientation();
+  state.board.flip();
+  state.boardOrientation = state.boardOrientation === 'white' ? 'black' : 'white';
+  renderEnginePanel(); // re-project any active arrow onto the flipped orientation
+});
+document.getElementById('toggleAnalysis').addEventListener('click', ()=>{
+  const el = document.getElementById('toggleAnalysis');
+  state.analysisMode = !state.analysisMode;
+  el.classList.toggle('on', state.analysisMode);
+  clearHighlights();
+  if(state.analysisMode){
+    setDragEnabled(true);
+    toast('Analysis mode — play any legal move.');
+  }else{
+    setDragEnabled(state.solving);
+    toast('Analysis mode off.');
+  }
 });
 document.getElementById('btnFavorite').addEventListener('click', toggleFavorite);
 function toggleFavorite(){
@@ -881,6 +1265,212 @@ function updateFavoriteButton(){
   const isFav = state.favorites.some(f=>f.puzzle.puzzleId === id);
   document.getElementById('btnFavorite').textContent = isFav ? '★' : '☆';
 }
+
+/* ============================================================
+   STOCKFISH ENGINE — analysis + "continue with Stockfish"
+   ============================================================
+   Stockfish's worker script lives on a different origin (cdnjs), and
+   classic Web Workers can't be constructed directly from a cross-origin
+   URL. The standard workaround is a tiny same-origin blob that does
+   nothing but importScripts() the real engine — importScripts (unlike
+   `new Worker(url)`) is allowed to load cross-origin, same as a <script>
+   tag would be.
+*/
+/* ---- board arrow overlay: draws the engine's suggested move as an arrow ---- */
+function squareCenterPct(square){
+  const file = square.charCodeAt(0) - 97;   // a=0 ... h=7
+  const rank = parseInt(square[1], 10);      // 1-8
+  let col = file, row = 8 - rank;
+  if(state.boardOrientation === 'black'){ col = 7 - file; row = rank - 1; }
+  return { x: (col + 0.5) / 8 * 100, y: (row + 0.5) / 8 * 100 };
+}
+function clearBoardArrows(){
+  const svg = document.getElementById('boardArrows');
+  if(svg) svg.innerHTML = '';
+}
+function drawArrow(from, to, color){
+  const svg = document.getElementById('boardArrows');
+  if(!svg || from === to) return;
+  const NS = 'http://www.w3.org/2000/svg';
+  const markerId = 'cptArrow-' + color.replace(/[^a-zA-Z0-9]/g, '');
+  if(!svg.querySelector('#' + markerId)){
+    let defs = svg.querySelector('defs');
+    if(!defs){ defs = document.createElementNS(NS, 'defs'); svg.appendChild(defs); }
+    const marker = document.createElementNS(NS, 'marker');
+    marker.setAttribute('id', markerId);
+    marker.setAttribute('markerWidth', '3');
+    marker.setAttribute('markerHeight', '3');
+    marker.setAttribute('refX', '1.6');
+    marker.setAttribute('refY', '1.5');
+    marker.setAttribute('orient', 'auto');
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', 'M0,0 L3,1.5 L0,3 z');
+    path.setAttribute('fill', color);
+    marker.appendChild(path);
+    defs.appendChild(marker);
+  }
+  const p1 = squareCenterPct(from);
+  const p2 = squareCenterPct(to);
+  const dx = p2.x - p1.x, dy = p2.y - p1.y;
+  const len = Math.sqrt(dx*dx + dy*dy) || 1;
+  const shorten = 5.5; // pull the tip back so the arrowhead clears the piece glyph
+  const ex = p2.x - (dx/len) * shorten;
+  const ey = p2.y - (dy/len) * shorten;
+  const line = document.createElementNS(NS, 'line');
+  line.setAttribute('x1', p1.x); line.setAttribute('y1', p1.y);
+  line.setAttribute('x2', ex); line.setAttribute('y2', ey);
+  line.setAttribute('stroke', color);
+  line.setAttribute('stroke-width', '2.6');
+  line.setAttribute('stroke-linecap', 'round');
+  line.setAttribute('marker-end', 'url(#' + markerId + ')');
+  svg.appendChild(line);
+}
+
+function initStockfish(){
+  if(state.sf) return state.sf;
+  try{
+    const bootstrap = `importScripts('${CONFIG.STOCKFISH_URL}');`;
+    const blobUrl = URL.createObjectURL(new Blob([bootstrap], {type:'application/javascript'}));
+    const worker = new Worker(blobUrl);
+    worker.onmessage = (e)=> handleEngineLine(typeof e.data === 'string' ? e.data : '');
+    worker.onerror = ()=>{
+      toast('Engine unavailable — check your connection.');
+      state.sf = null;
+    };
+    worker.postMessage('uci');
+    state.sf = worker;
+  }catch(err){
+    console.error('Stockfish failed to load', err);
+    toast('Engine unavailable — check your connection.');
+    state.sf = null;
+  }
+  return state.sf;
+}
+
+function handleEngineLine(line){
+  if(!line) return;
+  if(line.startsWith('info') && line.includes(' pv ')){
+    const cpMatch = line.match(/score cp (-?\d+)/);
+    const mateMatch = line.match(/score mate (-?\d+)/);
+    const depthMatch = line.match(/\bdepth (\d+)/);
+    const pvMatch = line.match(/ pv (.+)$/);
+    state.sfBestLine = {
+      cp: cpMatch ? parseInt(cpMatch[1], 10) : null,
+      mate: mateMatch ? parseInt(mateMatch[1], 10) : null,
+      depth: depthMatch ? parseInt(depthMatch[1], 10) : null,
+      pv: pvMatch ? pvMatch[1].trim().split(' ') : []
+    };
+    renderEnginePanel();
+  }else if(line.startsWith('bestmove')){
+    const best = line.split(' ')[1];
+    const wasContinueMode = state.sfMode === 'continue';
+    state.sfMode = null;
+    document.getElementById('btnStockfishAnalyze').disabled = false;
+    document.getElementById('btnStockfishGo').disabled = false;
+    if(wasContinueMode && best && best !== '(none)') playFreeMove(best);
+    if(wasContinueMode && state.analysisMode) setDragEnabled(true);
+  }
+}
+
+function renderEnginePanel(){
+  const evalEl = document.getElementById('engineEval');
+  const bestEl = document.getElementById('engineBest');
+  const depthEl = document.getElementById('engineDepth');
+  const line = state.sfBestLine || {};
+  if(line.mate != null){
+    evalEl.textContent = '#' + line.mate;
+  }else if(line.cp != null){
+    // UCI score is relative to the side to move; normalize to White's perspective.
+    const turn = state.chess ? state.chess.turn() : 'w';
+    const whiteCp = turn === 'w' ? line.cp : -line.cp;
+    evalEl.textContent = (whiteCp >= 0 ? '+' : '') + (whiteCp / 100).toFixed(2);
+  }else{
+    evalEl.textContent = '—';
+  }
+  depthEl.textContent = line.depth ?? '—';
+  clearBoardArrows();
+  if(line.pv && line.pv.length && state.fenHistory.length){
+    try{
+      const tmp = new Chess(state.fenHistory[state.viewIndex]);
+      const mv = parseUCI(line.pv[0]);
+      const res = tmp.move(mv);
+      bestEl.textContent = res ? res.san : line.pv[0];
+      drawArrow(mv.from, mv.to, '#d4af37');
+      if(line.pv[1]){
+        const mv2 = parseUCI(line.pv[1]);
+        if(tmp.move(mv2)) drawArrow(mv2.from, mv2.to, 'rgba(232,207,118,0.5)');
+      }
+    }catch(e){ bestEl.textContent = line.pv[0]; }
+  }else{
+    bestEl.textContent = '—';
+  }
+}
+
+function playFreeMove(uciStr){
+  if(!state.chess) return;
+  const mv = parseUCI(uciStr);
+  const result = state.chess.move(mv);
+  if(!result) return;
+  state.fenHistory.push(state.chess.fen());
+  state.viewIndex = state.fenHistory.length - 1;
+  clearHighlights();
+  state.board.position(state.chess.fen());
+  sfx.move();
+  renderMoveList();
+  updateMoveDisplay();
+  updateNavButtons();
+  toast('Stockfish played ' + result.san);
+}
+
+document.getElementById('btnStockfishAnalyze').addEventListener('click', ()=>{
+  if(!state.fenHistory.length) return toast('Load a puzzle first.');
+  const w = initStockfish();
+  if(!w) return;
+  state.sfMode = 'analyze';
+  state.sfBestLine = {};
+  renderEnginePanel();
+  document.getElementById('btnStockfishAnalyze').disabled = true;
+  w.postMessage('stop');
+  w.postMessage('position fen ' + state.fenHistory[state.viewIndex]);
+  w.postMessage('go depth ' + CONFIG.ENGINE_DEPTH);
+});
+
+document.getElementById('btnStockfishGo').addEventListener('click', ()=>{
+  if(!state.chess) return toast('Load a puzzle first.');
+  if(state.viewIndex !== state.fenHistory.length - 1){ toast('Jump back to the latest move first.'); return; }
+  const w = initStockfish();
+  if(!w) return;
+  state.solving = false; // engine is taking this move, not the puzzle line
+  setDragEnabled(false);
+  state.sfMode = 'continue';
+  document.getElementById('btnStockfishGo').disabled = true;
+  w.postMessage('stop');
+  w.postMessage('position fen ' + state.chess.fen());
+  w.postMessage('go depth ' + CONFIG.ENGINE_DEPTH);
+});
+
+document.getElementById('btnCopyFen').addEventListener('click', async ()=>{
+  if(!state.fenHistory.length) return;
+  const fen = state.fenHistory[state.viewIndex];
+  try{ await navigator.clipboard.writeText(fen); toast('FEN copied'); }
+  catch(e){ toast(fen); }
+});
+document.getElementById('btnCopyPgn').addEventListener('click', async ()=>{
+  if(!state.chess) return;
+  const pgn = state.chess.pgn();
+  try{ await navigator.clipboard.writeText(pgn); toast('PGN copied'); }
+  catch(e){ toast('Could not copy PGN'); }
+});
+
+/* ---- keyboard shortcuts ---- */
+document.addEventListener('keydown', (e)=>{
+  if(!document.getElementById('screen-trainer').classList.contains('active')) return;
+  if(e.target && /input|textarea|select/i.test(e.target.tagName)) return;
+  if(e.key === 'ArrowLeft'){ jumpToFenIndex(state.viewIndex - 1); }
+  else if(e.key === 'ArrowRight'){ jumpToFenIndex(state.viewIndex + 1); }
+  else if(e.key.toLowerCase() === 'h'){ document.getElementById('btnHint').click(); }
+  else if(e.key.toLowerCase() === 'n'){ document.getElementById('btnNext').click(); }
+});
 
 /* ============================================================
    STATISTICS SCREEN RENDER
@@ -934,17 +1524,23 @@ function wireToggle(id, key, onChange){
     if(onChange) onChange(state.settings[key]);
   });
 }
-wireToggle('toggleTheme', 'theme');
+wireToggle('toggleTheme', 'theme', v=>{ /* single dark theme by design; reserved for future light mode */ });
 wireToggle('toggleSound', 'sound');
 wireToggle('toggleAnim', 'animations');
-wireToggle('toggleCoords', 'coordinates', v=>{
-  if(state.board) state.board.set({ coordinates: v });
-});
+wireToggle('toggleCoords', 'coordinates', v=>{ rebuildBoard(); });
 wireToggle('toggleAutoFlip', 'autoFlip');
+wireToggle('toggleAutoAdvance', 'autoAdvance');
+
+document.getElementById('selPieceStyle').value = state.settings.pieceStyle;
+document.getElementById('selPieceStyle').addEventListener('change', e=>{
+  state.settings.pieceStyle = e.target.value;
+  saveSettings();
+  rebuildBoard();
+});
 
 document.querySelectorAll('#boardColorRow .color-dot').forEach(dot=>{
   dot.addEventListener('click', ()=>{
-    state.settings['boardColor'] = dot.dataset.c;
+    state.settings.boardColor = dot.dataset.c;
     saveSettings();
     applyBoardColor();
   });
@@ -959,22 +1555,41 @@ function applyBoardColor(){
   const c = map[state.settings.boardColor] || map.brown;
   document.documentElement.style.setProperty('--board-light', c.light);
   document.documentElement.style.setProperty('--board-dark', c.dark);
+  // chessboard.js 1.0.0 uses data-square-color attributes rather than the old
+  // hashed class names from 0.x, so target those instead of the stale
+  // ".white-1e1d7" / ".black-3c85d" selectors which no longer exist.
+  document.querySelectorAll('#board [data-square-color="white"]').forEach(el=>el.style.background = c.light);
+  document.querySelectorAll('#board [data-square-color="black"]').forEach(el=>el.style.background = c.dark);
 }
 
 /* ============================================================
-   INITIALIZATION
+   refreshBoardPosition — keep board, chess.js, and fenHistory in sync
+   after a rebuild (e.g. settings change) without losing puzzle state
+   ============================================================ */
+function refreshBoardPosition(animate){
+  if(!state.board) return;
+  state.board.orientation(state.boardOrientation);
+  if(state.fenHistory.length){
+    state.board.position(state.fenHistory[state.viewIndex], !!animate);
+  }
+  applyBoardColor();
+}
+
+/* ============================================================
+   INIT
    ============================================================ */
 function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
 
 async function init(){
   renderPieceGrid();
   applyBoardColor();
+  updateNavButtons();
   try{
     state.masterIndex = await fetchJSONCached(`${CONFIG.REPO_BASE}/index.json`);
-  }catch(e){ console.warn('Master index offline:', e); }
+  }catch(e){ console.warn('Master index unavailable yet:', e); }
 
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
+    navigator.serviceWorker.register('sw.js').catch(()=>{/* offline-shell registration is best-effort */});
   }
 }
 init();
