@@ -210,6 +210,117 @@ body{
   overflow:hidden;
   padding-bottom:78px;
 }
+     /* ==========================================================
+   DESKTOP LAYOUT (Minimal UI / Large Board)
+   ========================================================== */
+
+@media (min-width:900px){
+
+    /* Remove wasted bottom space */
+    body{
+        padding-bottom:0;
+    }
+
+    /* Hide trainer header */
+    #screen-trainer .topbar{
+        display:none;
+    }
+
+    /* Make the board the star */
+    .board-shell,
+    .board-toolbar,
+    .status-bar,
+    .nav-row,
+    .action-row{
+        max-width:720px;
+    }
+
+    /* Give the board more room */
+    .trainer-wrap{
+        max-width:1500px;
+        padding:24px 36px;
+        align-items:flex-start;
+        gap:36px;
+    }
+
+    .board-col{
+        flex:1;
+    }
+
+    .side-panel{
+        flex:0 0 320px;
+        margin:0;
+    }
+
+    /* Turn bottom navigation into floating desktop sidebar */
+    .bottom-nav{
+
+        position:fixed;
+
+        top:50%;
+        right:24px;
+
+        left:auto;
+        bottom:auto;
+
+        transform:translateY(-50%);
+
+        width:auto;
+
+        display:flex;
+        flex-direction:column;
+
+        gap:10px;
+
+        padding:12px;
+
+        border-radius:18px;
+
+        border:1px solid var(--panel-border);
+
+        background:rgba(11,14,20,.82);
+
+        backdrop-filter:blur(18px);
+        -webkit-backdrop-filter:blur(18px);
+
+        justify-content:flex-start;
+    }
+
+    .nav-btn{
+
+        flex-direction:row;
+
+        justify-content:flex-start;
+
+        gap:10px;
+
+        padding:10px 16px;
+
+        font-size:13px;
+
+        min-width:150px;
+
+        border-radius:12px;
+    }
+
+    .nav-btn .ic{
+        font-size:18px;
+    }
+
+    /* More breathing room */
+    .status-bar{
+        margin-bottom:14px;
+    }
+
+    .nav-row{
+        margin-top:14px;
+    }
+
+    .action-row{
+        margin-top:18px;
+    }
+
+}
 </style>
 </head>
 <body>
